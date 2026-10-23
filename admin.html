@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkillSwap Admin | Moderation & Platform Control</title>
+  <meta name="description" content="Dedicated Administrator Portal for SkillSwap. Manage content moderation, audit swap velocity, and publish platform announcements.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Admin specific fine-tuning */
+    .admin-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+    .admin-stat-card {
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .admin-stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+    .stat-icon-plum { background: var(--primary-light); color: var(--primary); }
+    .stat-icon-emerald { background: var(--emerald-badge-bg); color: var(--emerald-dark); }
+    .stat-icon-amber { background: var(--amber-badge-bg); color: var(--amber); }
+    .stat-icon-danger { background: var(--danger-badge-bg); color: var(--danger); }
+    .admin-stat-info h5 {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .admin-stat-info .stat-number {
+      font-family: var(--font-heading);
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.1;
+    }
+    .custom-glass-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 8px;
+    }
+    .custom-glass-table th {
+      padding: 10px 16px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      text-align: left;
+    }
+    .custom-glass-table tbody tr {
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: var(--radius-md);
+      box-shadow: 0 2px 8px rgba(31, 38, 135, 0.04);
+      transition: all var(--transition-fast);
+    }
+    .custom-glass-table tbody tr:hover {
+      background: rgba(255, 255, 255, 0.9);
+      transform: translateY(-1px);
+    }
+    .custom-glass-table td {
+      padding: 14px 16px;
+      font-size: 0.88rem;
+      vertical-align: middle;
+    }
+    .custom-glass-table td:first-child {
+      border-top-left-radius: var(--radius-md);
+      border-bottom-left-radius: var(--radius-md);
+    }
+    .custom-glass-table td:last-child {
+      border-top-right-radius: var(--radius-md);
+      border-bottom-right-radius: var(--radius-md);
+    }
+    .ai-report-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      font-size: 0.76rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, rgba(216, 180, 232, 0.4), rgba(162, 228, 216, 0.4));
+      color: var(--primary);
+      border: 1px solid rgba(109, 59, 107, 0.2);
+    }
+    .broadcast-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    .broadcast-preview-box {
+      padding: 20px;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px dashed rgba(109, 59, 107, 0.3);
+    }
+    .reports-download-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .report-export-card {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 220px;
+    }
+    .report-export-card h4 {
+      font-family: var(--font-heading);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+    .report-export-card p {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+    }
+    @media (max-width: 1024px) {
+      .admin-stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .broadcast-form-grid { grid-template-columns: 1fr; }
+      .reports-download-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Floating Mesh Gradient Background Blobs -->
+  <div class="mesh-bg-container" aria-hidden="true">
+    <div class="mesh-blob mesh-blob-1"></div>
+    <div class="mesh-blob mesh-blob-2"></div>
+    <div class="mesh-blob mesh-blob-3"></div>
+    <div class="mesh-blob mesh-blob-4"></div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- ==========================================================================
+       ADMIN NAVBAR
+       ========================================================================== -->
+  <header class="navbar-container" id="adminNavbar">
+    <nav class="navbar" aria-label="Administrator Navigation">
+      
+      <!-- Brand Logo (Left) -->
+      <a href="admin.html" class="nav-brand">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="brand-title">SkillSwap</span>
+          <span class="badge badge-plum" style="font-size: 0.7rem; padding: 2px 8px;">ADMIN</span>
+        </div>
+      </a>
+
+      <!-- Clean Center Tabs -->
+      <div class="nav-pills-container" role="tablist">
+        <button type="button" class="nav-pill-btn active" id="tabBtn-moderation" onclick="switchAdminTab('moderation')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          <span>Moderation Queue</span>
+          <span class="nav-counter" id="adminModCounter">4</span>
+        </button>
+        <button type="button" class="nav-pill-btn" id="tabBtn-swaps" onclick="switchAdminTab('swaps')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"></path></svg>
+          <span>Swap Monitor</span>
+        </button>
+        <button type="button" class="nav-pill-btn" id="tabBtn-broadcasts" onclick="switchAdminTab('broadcasts')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span>Broadcasts</span>
+        </button>
+        <button type="button" class="nav-pill-btn" id="tabBtn-reports" onclick="switchAdminTab('reports')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>Reports</span>
+        </button>
+      </div>
+
+      <!-- Right Admin Profile & Log Out -->
+      <div class="nav-actions">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80" alt="Admin" class="user-avatar-sm" id="adminAvatarImg">
+          <span style="font-weight: 600; font-size: 0.88rem; color: var(--text-main);" id="adminNameText">Sarah Connor</span>
+        </div>
+        <button type="button" class="btn btn-glass btn-sm" onclick="handleAdminLogout()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          <span>Log Out</span>
+        </button>
+      </div>
+
+    </nav>
+  </header>
+
+  <!-- ==========================================================================
+       MAIN ADMIN CONTENT CONTAINER
+       ========================================================================== -->
+  <main class="main-wrapper">
+    
+    <!-- Header Summary Stats -->
+    <div class="admin-stats-grid">
+      <div class="glass-card admin-stat-card">
+        <div class="admin-stat-icon stat-icon-plum">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        </div>
+        <div class="admin-stat-info">
+          <h5>Total Swappers</h5>
+          <div class="stat-number" id="statUsersCount">1,428</div>
+        </div>
+      </div>
+
+      <div class="glass-card admin-stat-card">
+        <div class="admin-stat-icon stat-icon-emerald">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"></path></svg>
+        </div>
+        <div class="admin-stat-info">
+          <h5>Active Swaps</h5>
+          <div class="stat-number" id="statActiveSwaps">342</div>
+        </div>
+      </div>
+
+      <div class="glass-card admin-stat-card">
+        <div class="admin-stat-icon stat-icon-danger">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        </div>
+        <div class="admin-stat-info">
+          <h5>Moderation Queue</h5>
+          <div class="stat-number" id="statModQueue">4</div>
+        </div>
+      </div>
+
+      <div class="glass-card admin-stat-card">
+        <div class="admin-stat-icon stat-icon-amber">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+        </div>
+        <div class="admin-stat-info">
+          <h5>Average Rating</h5>
+          <div class="stat-number">4.88 ★</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 1: MODERATION QUEUE -->
+    <section class="admin-view-tab" id="adminTab-moderation-view">
+      <div class="glass-card" style="padding: 24px; overflow-x: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 style="font-family: var(--font-heading); font-size: 1.18rem; color: var(--text-main); font-weight: 700;">
+            AI-Flagged Content & Reported Accounts
+          </h3>
+          <span class="badge badge-plum">Automated LLM Sentiment & Policy Filter</span>
+        </div>
+
+        <table class="custom-glass-table">
+          <thead>
+            <tr>
+              <th>Reported User / Account</th>
+              <th>Content Description / Skill</th>
+              <th>AI Classification</th>
+              <th>AI Reason Summary</th>
+              <th>Admin Action</th>
+            </tr>
+          </thead>
+          <tbody id="moderationTableBody">
+            <!-- Injected by script -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 2: SWAP MONITOR -->
+    <section class="admin-view-tab" id="adminTab-swaps-view" style="display: none;">
+      <div class="glass-card" style="padding: 24px; overflow-x: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+          <h3 style="font-family: var(--font-heading); font-size: 1.18rem; color: var(--text-main); font-weight: 700;">
+            Platform-Wide Swap Transactions
+          </h3>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="category-chip active" onclick="filterAdminSwaps('all', this)">All</button>
+            <button type="button" class="category-chip" onclick="filterAdminSwaps('pending', this)">Pending</button>
+            <button type="button" class="category-chip" onclick="filterAdminSwaps('accepted', this)">Accepted</button>
+            <button type="button" class="category-chip" onclick="filterAdminSwaps('completed', this)">Completed</button>
+            <button type="button" class="category-chip" onclick="filterAdminSwaps('cancelled', this)">Cancelled</button>
+          </div>
+        </div>
+
+        <table class="custom-glass-table">
+          <thead>
+            <tr>
+              <th>Swap ID</th>
+              <th>Requester</th>
+              <th>Receiver</th>
+              <th>Skills Exchanged</th>
+              <th>Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="adminSwapsTableBody">
+            <!-- Injected by script -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 3: BROADCASTS -->
+    <section class="admin-view-tab" id="adminTab-broadcasts-view" style="display: none;">
+      <div class="glass-card" style="padding: 24px;">
+        <h3 style="font-family: var(--font-heading); font-size: 1.18rem; color: var(--text-main); font-weight: 700; margin-bottom: 6px;">
+          Send Real-Time Platform Broadcast
+        </h3>
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 24px;">
+          Publish urgent notifications, maintenance advisories, or feature highlights pinned to every user's dashboard.
+        </p>
+
+        <div class="broadcast-form-grid">
+          <form onsubmit="handleSendBroadcast(event)">
+            <div class="form-group">
+              <label class="form-label" for="broadcastTypeSelect">Announcement Type</label>
+              <select id="broadcastTypeSelect" class="glass-input" style="height: 48px; border-radius: var(--radius-pill);" onchange="updateBroadcastPreview()">
+                <option value="announcement">Feature Announcement (Purple Accent)</option>
+                <option value="warning">System Advisory / Maintenance (Amber Accent)</option>
+                <option value="critical">Critical Urgent Notice (Coral Red Accent)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="broadcastTextInput">Broadcast Message</label>
+              <textarea id="broadcastTextInput" class="glass-textarea" rows="4" placeholder="Enter message text that will be pinned to all user headers..." required oninput="updateBroadcastPreview()">🚀 Welcome to SkillSwap! Connect your skills and discover mutual learning partnerships.</textarea>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+              <button type="submit" class="btn btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                <span>Publish Broadcast</span>
+              </button>
+              <button type="button" class="btn btn-glass" onclick="handleClearBroadcast()">
+                <span>Clear Active Banner</span>
+              </button>
+            </div>
+          </form>
+
+          <div class="broadcast-preview-box">
+            <h4 style="font-size: 0.86rem; font-weight: 700; color: var(--text-muted); margin-bottom: 12px; text-transform: uppercase;">
+              Live User Banner Preview:
+            </h4>
+            <div class="glass-elevated" id="adminPreviewBanner" style="padding: 14px 18px; border-radius: var(--radius-md); border-left: 4px solid var(--primary); display: flex; align-items: center; gap: 12px;">
+              <span class="badge badge-plum" id="previewBadgeTag">Announcement</span>
+              <span id="previewMessageText" style="font-size: 0.9rem; font-weight: 500;">🚀 Welcome to SkillSwap! Connect your skills and discover mutual learning partnerships.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: REPORTS DOWNLOAD -->
+    <section class="admin-view-tab" id="adminTab-reports-view" style="display: none;">
+      <div class="glass-card" style="padding: 24px;">
+        <h3 style="font-family: var(--font-heading); font-size: 1.18rem; color: var(--text-main); font-weight: 700; margin-bottom: 6px;">
+          Export Platform Analytics & Audit Data
+        </h3>
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 24px;">
+          Generate and download structured CSV or JSON records for compliance, audits, and performance metrics.
+        </p>
+
+        <div class="reports-download-grid">
+          <!-- Report 1 -->
+          <div class="glass-card report-export-card">
+            <div>
+              <h4>User Activity & Profiles</h4>
+              <p>Full register of all active users, their skills offered, wanted, ratings, and account status.</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn btn-glass btn-sm" onclick="exportData('users', 'csv')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Export CSV</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="exportData('users', 'json')">
+                <span>Export JSON</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Report 2 -->
+          <div class="glass-card report-export-card">
+            <div>
+              <h4>Feedback & Ratings Logs</h4>
+              <p>Every submitted 1–5 star rating, peer comments, endorsed skills, and timestamped reviews.</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn btn-glass btn-sm" onclick="exportData('feedback', 'csv')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Export CSV</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="exportData('feedback', 'json')">
+                <span>Export JSON</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Report 3 -->
+          <div class="glass-card report-export-card">
+            <div>
+              <h4>Swap Statistics & Velocity</h4>
+              <p>Transaction records of pending, accepted, cancelled, and completed swaps with skill pairs.</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn btn-glass btn-sm" onclick="exportData('swaps', 'csv')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Export CSV</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="exportData('swaps', 'json')">
+                <span>Export JSON</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // State Store for Admin
+    const AdminState = {
+      moderationItems: JSON.parse(localStorage.getItem('skillswap_moderation')) || [
+        {
+          id: 'mod_01',
+          targetUser: 'crypto_trader_99',
+          userEmail: 'trader99@tempmail.com',
+          content: 'Guaranteed 500% ROI Forex Signals and Telegram VIP Pump Group Access',
+          aiCategory: 'Commercial Spam',
+          aiConfidence: '99.4%',
+          aiReason: 'Direct violation of non-monetary peer barter policy. Advertising commercial financial advisory & speculative Telegram groups.',
+          date: 'Today, 10:14'
+        },
+        {
+          id: 'mod_02',
+          targetUser: 'bot_scripter_x',
+          userEmail: 'crawler2@botfarm.io',
+          content: 'Selling cracked Adobe Photoshop and AutoCAD licenses in exchange for gift cards',
+          aiCategory: 'Fraudulent Offering',
+          aiConfidence: '98.7%',
+          aiReason: 'Offering pirated software and requesting monetary gift cards rather than organic peer skill exchange.',
+          date: 'Today, 12:45'
+        },
+        {
+          id: 'mod_03',
+          targetUser: 'anonymous_learner',
+          userEmail: 'anon198@protonmail.com',
+          content: 'Will teach basic keyboard typing for $50/hour cash only',
+          aiCategory: 'Policy Breach (Cash Demand)',
+          aiConfidence: '96.2%',
+          aiReason: 'Platform strictly forbids monetary charges. All exchanges must be mutual knowledge barter.',
+          date: 'Today, 14:10'
+        },
+        {
+          id: 'mod_04',
+          targetUser: 'rude_user_77',
+          userEmail: 'user77@mail.com',
+          content: 'Harassing messages reported in swap request chat regarding partner nationality.',
+          aiCategory: 'Harassment & Abuse',
+          aiConfidence: '97.1%',
+          aiReason: 'Violates community respect guidelines. AI sentiment analysis detected hostile and discriminatory language.',
+          date: 'Today, 15:30'
+        }
+      ],
+      swaps: JSON.parse(localStorage.getItem('skillswap_swaps')) || [],
+      users: JSON.parse(localStorage.getItem('skillswap_all_users')) || [],
+      swapFilter: 'all'
+    };
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          ${type === 'success' ? '<polyline points="20 6 9 17 4 12"></polyline>' : '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>'}
+        </svg>
+        <span>${message}</span>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.add('toast-closing');
+        setTimeout(() => toast.remove(), 250);
+      }, 3500);
+    }
+
+    // Scroll listener for floating navbar
+    window.addEventListener('scroll', () => {
+      const navContainer = document.getElementById('adminNavbar');
+      if (window.scrollY > 20) {
+        navContainer.classList.add('navbar-scrolled');
+      } else {
+        navContainer.classList.remove('navbar-scrolled');
+      }
+    });
+
+    function switchAdminTab(tabKey) {
+      document.querySelectorAll('.nav-pill-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById(`tabBtn-${tabKey}`);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      document.querySelectorAll('.admin-view-tab').forEach(t => t.style.display = 'none');
+      const targetView = document.getElementById(`adminTab-${tabKey}-view`);
+      if (targetView) targetView.style.display = 'block';
+
+      if (tabKey === 'moderation') renderModerationTable();
+      if (tabKey === 'swaps') renderAdminSwapsTable();
+    }
+
+    function renderModerationTable() {
+      const tbody = document.getElementById('moderationTableBody');
+      const counter = document.getElementById('adminModCounter');
+      const statCounter = document.getElementById('statModQueue');
+      
+      counter.textContent = AdminState.moderationItems.length;
+      statCounter.textContent = AdminState.moderationItems.length;
+
+      if (AdminState.moderationItems.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 32px; color: var(--emerald-dark); font-weight: 600;">
+              🎉 Queue is clear! No flagged skills or users pending moderation.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = AdminState.moderationItems.map(item => `
+        <tr id="mod-${item.id}">
+          <td>
+            <strong>@${item.targetUser}</strong>
+            <div style="font-size: 0.74rem; color: var(--text-muted);">${item.userEmail}</div>
+          </td>
+          <td style="max-width: 240px; font-size: 0.84rem;">
+            "${item.content}"
+          </td>
+          <td>
+            <span class="ai-report-badge">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              ${item.aiCategory}
+            </span>
+            <div style="font-size: 0.7rem; color: var(--text-light); margin-top: 3px;">Confidence: ${item.aiConfidence}</div>
+          </td>
+          <td style="max-width: 260px; font-size: 0.78rem; color: var(--text-muted);">
+            ${item.aiReason}
+          </td>
+          <td>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" class="btn btn-danger btn-sm" onclick="handleModAction('${item.id}', 'reject')">
+                Reject Skill
+              </button>
+              <button type="button" class="btn btn-glass btn-sm" style="color: var(--danger);" onclick="handleModAction('${item.id}', 'ban')">
+                Ban User
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="handleModAction('${item.id}', 'dismiss')">
+                Dismiss
+              </button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function handleModAction(id, action) {
+      const item = AdminState.moderationItems.find(m => m.id === id);
+      AdminState.moderationItems = AdminState.moderationItems.filter(m => m.id !== id);
+      localStorage.setItem('skillswap_moderation', JSON.stringify(AdminState.moderationItems));
+      renderModerationTable();
+
+      if (action === 'reject') {
+        showToast(`Rejected & removed skill listing from @${item ? item.targetUser : 'user'}`, 'success');
+      } else if (action === 'ban') {
+        showToast(`Banned user @${item ? item.targetUser : 'user'} from platform`, 'error');
+      } else {
+        showToast(`Dismissed moderation flag`, 'info');
+      }
+    }
+
+    function filterAdminSwaps(status, btnEl) {
+      AdminState.swapFilter = status;
+      document.querySelectorAll('#adminTab-swaps-view .category-chip').forEach(c => c.classList.remove('active'));
+      if (btnEl) btnEl.classList.add('active');
+      renderAdminSwapsTable();
+    }
+
+    function renderAdminSwapsTable() {
+      const tbody = document.getElementById('adminSwapsTableBody');
+      let list = AdminState.swaps;
+      if (AdminState.swapFilter !== 'all') {
+        list = list.filter(s => s.status === AdminState.swapFilter);
+      }
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 24px; color: var(--text-muted);">No swaps matching "${AdminState.swapFilter}" status</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(s => `
+        <tr>
+          <td><code>#${s.id}</code></td>
+          <td><strong>${s.partnerName || 'Alex Rivera'}</strong></td>
+          <td><strong>${s.type === 'incoming' ? 'Alex Rivera' : (s.partnerName || 'Elena Rostova')}</strong></td>
+          <td>${s.skillWantedFromUser || s.skillWantedFromPartner || 'Python'} ⇄ ${s.skillOfferedToUser || s.skillOfferedFromUser || 'Figma'}</td>
+          <td>${s.date || 'Recent'}</td>
+          <td><span class="badge badge-${s.status === 'accepted' ? 'mint' : s.status === 'completed' ? 'plum' : s.status === 'cancelled' ? 'danger' : 'amber'}">${(s.status || 'pending').toUpperCase()}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    function updateBroadcastPreview() {
+      const type = document.getElementById('broadcastTypeSelect').value;
+      const text = document.getElementById('broadcastTextInput').value;
+      const previewBanner = document.getElementById('adminPreviewBanner');
+      const previewBadge = document.getElementById('previewBadgeTag');
+      const previewText = document.getElementById('previewMessageText');
+
+      previewText.textContent = text || 'Your broadcast message preview here...';
+      if (type === 'warning') {
+        previewBanner.style.borderLeftColor = 'var(--amber)';
+        previewBadge.className = 'badge badge-amber';
+        previewBadge.textContent = 'Advisory';
+      } else if (type === 'critical') {
+        previewBanner.style.borderLeftColor = 'var(--danger)';
+        previewBadge.className = 'badge badge-danger';
+        previewBadge.textContent = 'Urgent Notice';
+      } else {
+        previewBanner.style.borderLeftColor = 'var(--primary)';
+        previewBadge.className = 'badge badge-plum';
+        previewBadge.textContent = 'Announcement';
+      }
+    }
+
+    function handleSendBroadcast(e) {
+      e.preventDefault();
+      const type = document.getElementById('broadcastTypeSelect').value;
+      const text = document.getElementById('broadcastTextInput').value.trim();
+
+      const broadcastData = { active: true, type, text };
+      localStorage.setItem('skillswap_broadcast', JSON.stringify(broadcastData));
+      showToast('Platform-wide broadcast banner published live!', 'success');
+    }
+
+    function handleClearBroadcast() {
+      const broadcastData = { active: false, type: 'announcement', text: '' };
+      localStorage.setItem('skillswap_broadcast', JSON.stringify(broadcastData));
+      showToast('Active broadcast banner revoked', 'info');
+    }
+
+    function exportData(reportType, format) {
+      let data = [];
+      if (reportType === 'users') {
+        data = AdminState.users;
+      } else if (reportType === 'swaps') {
+        data = AdminState.swaps;
+      } else {
+        data = [
+          { swapId: 'swp_105', reviewer: 'Alex Rivera', stars: 5, comment: 'Phenomenal exchange!' },
+          { swapId: 'swp_104', reviewer: 'Marcus Vance', stars: 5, comment: 'Great communication!' }
+        ];
+      }
+
+      let blob, fileExt;
+      if (format === 'json') {
+        blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        fileExt = 'json';
+      } else {
+        const headers = Object.keys(data[0] || { id: 1 }).join(',');
+        const rows = data.map(row => Object.values(row).map(val => `"${String(val).replace(/"/g, '""')}"`).join(','));
+        blob = new Blob([[headers, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+        fileExt = 'csv';
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `skillswap_${reportType}_${Date.now()}.${fileExt}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`Exported ${reportType} as ${fileExt.toUpperCase()}!`, 'success');
+    }
+
+    function handleAdminLogout() {
+      localStorage.removeItem('skillswap_role');
+      showToast('Admin logged out. Redirecting...', 'info');
+      setTimeout(() => {
+        window.location.href = 'login.html';
+      }, 400);
+    }
+
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+      renderModerationTable();
+    });
+  </script>
+</body>
+</html>

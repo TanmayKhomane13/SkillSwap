@@ -1,100 +1,54 @@
 /**
  * ==========================================================================
- * SKILLSWAP PLATFORM - CORE FRONTEND JAVASCRIPT ARCHITECTURE
+ * SKILLSWAP PLATFORM - USER APPLICATION CONTROLLER & STATE
  * ==========================================================================
  * Strictly Vanilla ES6+ (No external frameworks)
- * Modular design ready for Python Flask + MongoDB + Google OAuth backend
+ * Modular architecture prepared for Python Flask + MongoDB + Google OAuth
  */
 
 // ==========================================================================
-// 1. BACKEND API SERVICE & CONFIGURATION
+// 1. CONFIGURATION & REST API CONTRACT
 // ==========================================================================
 const CONFIG = {
   API_BASE_URL: 'http://localhost:5000',
-  USE_MOCK_BACKEND: true, // Set to false when connecting to running Flask backend
+  USE_MOCK_BACKEND: true, // Switch to false when connecting to running Flask server
   ENDPOINTS: {
-    // Auth Routes
     LOGIN: '/api/auth/login',
     REGISTER: '/api/auth/register',
     GOOGLE_OAUTH: '/auth/google',
-    ADMIN_LOGIN: '/api/auth/admin-login',
-    LOGOUT: '/api/auth/logout',
-
-    // Profile & Skills Routes
     GET_PROFILE: '/api/profile',
     UPDATE_PROFILE: '/api/profile/update',
-
-    // Discovery & Users Routes
     GET_USERS: '/api/users',
-    SEARCH_USERS: '/api/users/search',
-
-    // Swaps & Ratings Routes
     GET_SWAPS: '/api/swaps',
     CREATE_SWAP: '/api/swaps/create',
     UPDATE_SWAP_STATUS: (id) => `/api/swaps/${id}/status`,
     SUBMIT_REVIEW: (id) => `/api/swaps/${id}/review`,
-
-    // AI Intelligence Routes
     AI_CHAT: '/api/ai/chat',
-    AI_SUMMARIZE_PROFILE: (id) => `/api/ai/summarize-profile/${id}`,
-    AI_MATCH: '/api/ai/match',
-
-    // Admin Routes
-    ADMIN_MODERATION: '/api/admin/moderation',
-    ADMIN_MODERATION_ACTION: (id) => `/api/admin/moderation/${id}/action`,
-    ADMIN_SWAPS: '/api/admin/swaps',
-    ADMIN_BROADCAST: '/api/admin/broadcast',
-    ADMIN_EXPORT: (type, format) => `/api/admin/export/${type}?format=${format}`
-  }
-};
-
-/**
- * Universal API Request Wrapper
- * Handles both real Flask backend HTTP requests and rich offline mock fallbacks
- */
-const ApiService = {
-  async request(endpoint, options = {}) {
-    if (!CONFIG.USE_MOCK_BACKEND) {
-      try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}${endpoint}`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('skillswap_token') || ''}`,
-            ...options.headers
-          },
-          ...options
-        });
-        if (!response.ok) {
-          throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
-        }
-        return await response.json();
-      } catch (error) {
-        console.warn(`[ApiService] Flask backend request failed, falling back to local state:`, error);
-      }
-    }
-
-    // Realistic asynchronous latency simulation (150ms) for local mock operations
-    await new Promise(resolve => setTimeout(resolve, 150));
-    return null;
+    AI_SUMMARIZE: (id) => `/api/ai/summarize-profile/${id}`,
+    REPORT_CONTENT: '/api/moderation/report'
   }
 };
 
 // ==========================================================================
-// 2. INITIAL SEED DATA & LOCAL APPLICATION STATE
+// 2. SEED DATA & REACTIVE LOCAL STORE
 // ==========================================================================
-
 const DEFAULT_CURRENT_USER = {
   id: 'usr_alex_01',
   name: 'Alex Rivera',
   email: 'alex.rivera@example.com',
-  role: 'user', // 'user' or 'admin'
+  role: 'user',
   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
-  location: 'San Francisco, CA (PST)',
+  location: 'San Francisco, CA',
   headline: 'Senior Python & Backend Developer',
-  bio: 'Senior Python & Backend Developer with 5+ years building APIs, microservices, and data pipelines. Passionate about learning UI/UX design and pottery!',
+  bio: 'Senior Python Developer with 5+ years building APIs, microservices, and databases. Passionate about learning UI/UX design and pottery!',
   visibility: 'public',
   availability: ['Weekends', 'Weekday Evenings'],
   skillsOffered: ['Python Programming', 'Flask Web Dev', 'SQL & Databases'],
+  skillsOfferedDesc: {
+    'Python Programming': 'Full-stack Python scripting, API architecture, and database automation.',
+    'Flask Web Dev': 'Building clean REST APIs, auth flows, and microservices.',
+    'SQL & Databases': 'Relational data modeling, indexing, and query optimization.'
+  },
   skillsWanted: ['Figma UI/UX', 'Digital Illustration'],
   rating: 4.9,
   swapsCompleted: 8
@@ -105,12 +59,13 @@ const SEED_USERS = [
     id: 'usr_02',
     name: 'Elena Rostova',
     avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80',
-    location: 'Berlin, Germany (CET)',
+    location: 'Berlin, Germany',
     rating: 4.95,
     reviewCount: 14,
     availability: 'Weekends',
     visibility: 'public',
-    bio: 'Product Designer at a FinTech startup. I craft design systems, Figma component architectures, and micro-interactions.',
+    primarySkill: 'Figma UI/UX Design Systems',
+    skillDesc: 'I teach auto-layout mastery, design tokens, component libraries, and interactive prototyping.',
     skillsOffered: ['Figma UI/UX', 'Design Systems', 'User Research'],
     skillsWanted: ['Python Programming', 'Data Analysis']
   },
@@ -118,12 +73,13 @@ const SEED_USERS = [
     id: 'usr_03',
     name: 'Marcus Vance',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
-    location: 'Austin, TX (CST)',
+    location: 'Austin, TX',
     rating: 4.88,
     reviewCount: 9,
     availability: 'Weekday Evenings',
     visibility: 'public',
-    bio: 'Audio engineer and indie guitarist. Offering hands-on acoustic guitar tutorials, chord theory, and home studio mixing.',
+    primarySkill: 'Acoustic Guitar & Audio Mixing',
+    skillDesc: 'Hands-on chord progressions, fingerstyle technique, and Logic Pro mixing essentials.',
     skillsOffered: ['Guitar Basics', 'Audio Mixing & Logic Pro', 'Songwriting'],
     skillsWanted: ['Flask Web Dev', 'SEO Marketing']
   },
@@ -131,12 +87,13 @@ const SEED_USERS = [
     id: 'usr_04',
     name: 'Sofia Martinez',
     avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80',
-    location: 'Barcelona, Spain (CET)',
+    location: 'Barcelona, Spain',
     rating: 4.92,
     reviewCount: 22,
     availability: 'Weekday Evenings',
     visibility: 'public',
-    bio: 'Native Spanish speaker and linguistic tutor. Enthusiastic about exchanging conversational Spanish for machine learning fundamentals.',
+    primarySkill: 'Conversational Spanish',
+    skillDesc: 'Native Spanish coaching focusing on real-life dialogues, pronunciation, and culture.',
     skillsOffered: ['Spanish Conversational', 'DELE Exam Prep', 'Creative Writing'],
     skillsWanted: ['Python Programming', 'Excel & Financial Modeling']
   },
@@ -144,12 +101,13 @@ const SEED_USERS = [
     id: 'usr_05',
     name: 'Kenji Takahashi',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
-    location: 'Tokyo, Japan (JST)',
+    location: 'Tokyo, Japan',
     rating: 5.0,
     reviewCount: 11,
     availability: 'Custom Availability',
     visibility: 'public',
-    bio: 'Landscape & street photographer. I teach manual mirrorless camera controls, Lightroom color grading, and street composition.',
+    primarySkill: 'Street Photography & Lightroom',
+    skillDesc: 'Manual camera controls, natural light framing, and cinematic color grading.',
     skillsOffered: ['Photography & Lightroom', 'Photo Editing', 'Japanese Basics'],
     skillsWanted: ['Figma UI/UX', 'Web Development']
   },
@@ -157,12 +115,13 @@ const SEED_USERS = [
     id: 'usr_06',
     name: 'Priya Sharma',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
-    location: 'Toronto, Canada (EST)',
+    location: 'Toronto, Canada',
     rating: 4.75,
     reviewCount: 16,
     availability: 'Weekends',
     visibility: 'public',
-    bio: 'Growth Marketing Lead with 6+ years experience in B2B SaaS, Google Ads, and technical search engine optimization.',
+    primarySkill: 'SEO Growth Strategy',
+    skillDesc: 'Technical website optimization, keyword research, and high-impact content funnels.',
     skillsOffered: ['SEO Marketing', 'Content Strategy', 'Google Analytics'],
     skillsWanted: ['Python Programming', 'SQL & Databases']
   },
@@ -170,12 +129,13 @@ const SEED_USERS = [
     id: 'usr_07',
     name: 'David Kim',
     avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=200&auto=format&fit=crop&q=80',
-    location: 'Seattle, WA (PST)',
+    location: 'Seattle, WA',
     rating: 4.82,
     reviewCount: 7,
     availability: 'Weekday Evenings',
     visibility: 'public',
-    bio: 'Financial analyst skilled in advanced Excel dashboards, financial modeling, VBA scripting, and pitch decks.',
+    primarySkill: 'Excel & Financial Modeling',
+    skillDesc: 'Executive financial models, VBA automated macros, and dynamic dashboard creation.',
     skillsOffered: ['Excel & Financial Modeling', 'Business Valuation', 'VBA Automation'],
     skillsWanted: ['Flask Web Dev', 'Public Speaking']
   }
@@ -191,7 +151,7 @@ const SEED_SWAPS = [
     partnerLocation: 'Berlin, Germany',
     skillWantedFromUser: 'Python Programming',
     skillOfferedToUser: 'Figma UI/UX',
-    status: 'pending', // 'pending', 'accepted', 'completed', 'cancelled'
+    status: 'pending',
     message: 'Hey Alex! I saw you build Python APIs. I want to automate data processing for my design research, and I can teach you Figma autolayout and design tokens in exchange!',
     date: '2 hours ago',
     compatibilityScore: '98% Dual Match'
@@ -220,7 +180,7 @@ const SEED_SWAPS = [
     skillWantedFromPartner: 'Photography & Lightroom',
     skillOfferedFromUser: 'Flask Web Dev',
     status: 'pending',
-    message: 'Hi Kenji! I love your street photography. I want to learn Lightroom color grading, and I would love to build a custom portfolio website for you with Flask in return.',
+    message: 'Hi Kenji! I want to learn Lightroom color grading, and I would love to build a custom portfolio website for you with Flask in return.',
     date: '3 days ago'
   },
   {
@@ -233,7 +193,7 @@ const SEED_SWAPS = [
     skillWantedFromPartner: 'Guitar Basics',
     skillOfferedFromUser: 'Python Programming',
     status: 'accepted',
-    message: 'Swap agreed on Oct 18. Scheduled 3 sessions completed so far.',
+    message: 'Scheduled 3 sessions completed so far.',
     date: 'Active since Oct 18'
   },
   {
@@ -246,66 +206,15 @@ const SEED_SWAPS = [
     skillWantedFromPartner: 'Excel & Financial Modeling',
     skillOfferedFromUser: 'SQL & Databases',
     status: 'completed',
-    message: 'Exchange completed on Oct 14.',
     hasReviewed: false,
     date: 'Completed Oct 14'
   }
 ];
 
-const SEED_MODERATION = [
-  {
-    id: 'mod_01',
-    type: 'skill',
-    targetUser: 'crypto_trader_99',
-    userEmail: 'trader99@tempmail.com',
-    content: 'Guaranteed 500% ROI Forex Signals and Telegram VIP Pump Group Access',
-    aiCategory: 'Commercial Spam',
-    aiConfidence: '99.4%',
-    aiReason: 'Direct violation of non-monetary peer barter policy. Advertising commercial financial advisory & speculative Telegram groups.',
-    flaggedDate: '2026-10-23 10:14'
-  },
-  {
-    id: 'mod_02',
-    type: 'user',
-    targetUser: 'bot_scripter_x',
-    userEmail: 'crawler2@botfarm.io',
-    content: 'Selling cracked Adobe Photoshop and AutoCAD licenses in exchange for gift cards',
-    aiCategory: 'Fraudulent Offering',
-    aiConfidence: '98.7%',
-    aiReason: 'Offering pirated software and requesting monetary gift cards rather than organic peer skill exchange.',
-    flaggedDate: '2026-10-23 12:45'
-  },
-  {
-    id: 'mod_03',
-    type: 'skill',
-    targetUser: 'anonymous_learner',
-    userEmail: 'anon198@protonmail.com',
-    content: 'Will teach basic keyboard typing for $50/hour cash only',
-    aiCategory: 'Policy Breach (Cash Demand)',
-    aiConfidence: '96.2%',
-    aiReason: 'Platform strictly forbids monetary charges. All exchanges must be mutual knowledge barter.',
-    flaggedDate: '2026-10-23 14:10'
-  },
-  {
-    id: 'mod_04',
-    type: 'user',
-    targetUser: 'rude_user_77',
-    userEmail: 'user77@mail.com',
-    content: 'Harassing messages reported in swap request chat regarding partner nationality.',
-    aiCategory: 'Harassment & Abuse',
-    aiConfidence: '97.1%',
-    aiReason: 'Violates community respect guidelines. AI sentiment analysis detected hostile and discriminatory language.',
-    flaggedDate: '2026-10-23 15:30'
-  }
-];
-
-// Persistent State Handler (Loaded from LocalStorage or seed fallback)
 const AppState = {
   currentUser: JSON.parse(localStorage.getItem('skillswap_user')) || DEFAULT_CURRENT_USER,
-  role: localStorage.getItem('skillswap_role') || 'user',
   users: JSON.parse(localStorage.getItem('skillswap_all_users')) || SEED_USERS,
   swaps: JSON.parse(localStorage.getItem('skillswap_swaps')) || SEED_SWAPS,
-  moderationItems: JSON.parse(localStorage.getItem('skillswap_moderation')) || SEED_MODERATION,
   broadcast: JSON.parse(localStorage.getItem('skillswap_broadcast')) || {
     active: true,
     type: 'announcement',
@@ -317,24 +226,18 @@ const AppState = {
   filterAvailability: 'all',
   filterRating: 0,
   activeSwapSubtab: 'incoming',
-  activeAdminTab: 'moderation',
-  adminSwapFilter: 'all',
   chatMessages: [
     {
       sender: 'ai',
-      text: "Hello Alex! I am your SkillSwap AI Assistant. I can help you find complementary swappers, draft swap proposals, or summarize user profiles using RAG intelligence. How can I assist you today?",
-      actions: null
+      text: "Hello Alex! I am your SkillSwap AI Copilot. I can find complementary partners, draft swap proposals, or summarize user profiles using RAG intelligence. How can I assist you today?"
     }
   ]
 };
 
 function saveStateToStorage() {
   localStorage.setItem('skillswap_user', JSON.stringify(AppState.currentUser));
-  localStorage.setItem('skillswap_role', AppState.role);
   localStorage.setItem('skillswap_all_users', JSON.stringify(AppState.users));
   localStorage.setItem('skillswap_swaps', JSON.stringify(AppState.swaps));
-  localStorage.setItem('skillswap_moderation', JSON.stringify(AppState.moderationItems));
-  localStorage.setItem('skillswap_broadcast', JSON.stringify(AppState.broadcast));
 }
 
 // ==========================================================================
@@ -348,7 +251,7 @@ function showToast(message, type = 'info') {
   
   let iconSvg = '';
   if (type === 'success') {
-    iconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
+    iconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"></polyline></svg>';
   } else if (type === 'error') {
     iconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
   } else {
@@ -365,13 +268,22 @@ function showToast(message, type = 'info') {
 }
 
 // ==========================================================================
-// 4. NAVIGATION & VIEW ROUTING
+// 4. FIX #3: NAVBAR SCROLL FLOATING BEHAVIOR & NAVIGATION
 // ==========================================================================
+window.addEventListener('scroll', () => {
+  const navContainer = document.getElementById('mainNavbar');
+  if (window.scrollY > 20) {
+    navContainer.classList.add('navbar-scrolled');
+  } else {
+    navContainer.classList.remove('navbar-scrolled');
+  }
+});
+
 function navigateTo(viewId) {
   AppState.currentView = viewId;
 
-  // Update navbar button classes
-  document.querySelectorAll('.nav-link-btn').forEach(btn => btn.classList.remove('active'));
+  // Update center navigation pills
+  document.querySelectorAll('.nav-pill-btn').forEach(btn => btn.classList.remove('active'));
   const activeBtn = document.getElementById(`navBtn-${viewId}`);
   if (activeBtn) activeBtn.classList.add('active');
 
@@ -380,12 +292,10 @@ function navigateTo(viewId) {
   const targetSec = document.getElementById(`view-${viewId}`);
   if (targetSec) targetSec.classList.add('active');
 
-  // Specific render triggers
   if (viewId === 'explore') renderExploreProfiles();
-  if (viewId === 'profile') syncProfileFormData();
+  if (viewId === 'matches') renderMatchesView();
   if (viewId === 'swaps') renderSwapsList();
-  if (viewId === 'ai') renderAiChatHistory();
-  if (viewId === 'admin') renderAdminView();
+  if (viewId === 'profile') syncProfileFormData();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -396,49 +306,19 @@ function toggleUserDropdown(e) {
   dropdown.classList.toggle('show');
 }
 
-// Close user dropdown on outside click
 document.addEventListener('click', () => {
   const dropdown = document.getElementById('userDropdown');
   if (dropdown) dropdown.classList.remove('show');
+  closeAllDropdowns();
 });
-
-function toggleDemoRole() {
-  if (AppState.role === 'user') {
-    AppState.role = 'admin';
-    AppState.currentUser.role = 'admin';
-    showToast('Switched to Administrator Mode', 'info');
-    navigateTo('admin');
-  } else {
-    AppState.role = 'user';
-    AppState.currentUser.role = 'user';
-    showToast('Switched to User Mode', 'info');
-    navigateTo('explore');
-  }
-  saveStateToStorage();
-  updateNavbarUserSnippet();
-}
 
 function updateNavbarUserSnippet() {
   const nameEl = document.getElementById('navUserName');
   const avatarEl = document.getElementById('navUserAvatar');
-  const roleBadge = document.getElementById('navRoleBadge');
-  const roleToggleText = document.getElementById('roleToggleText');
 
   if (nameEl) nameEl.textContent = AppState.currentUser.name;
   if (avatarEl) avatarEl.src = AppState.currentUser.avatar;
-  if (roleBadge) {
-    if (AppState.role === 'admin') {
-      roleBadge.textContent = 'Admin';
-      roleBadge.className = 'role-tag-mini role-tag-admin';
-      if (roleToggleText) roleToggleText.textContent = 'Switch to User Mode';
-    } else {
-      roleBadge.textContent = 'User';
-      roleBadge.className = 'role-tag-mini role-tag-user';
-      if (roleToggleText) roleToggleText.textContent = 'Switch to Admin Mode';
-    }
-  }
 
-  // Update pending swaps badge
   const pendingCount = AppState.swaps.filter(s => s.type === 'incoming' && s.status === 'pending').length;
   const swapsCounter = document.getElementById('swapsNavCounter');
   if (swapsCounter) {
@@ -448,51 +328,172 @@ function updateNavbarUserSnippet() {
 }
 
 function handleLogout() {
-  showToast('Logging out...', 'info');
-  localStorage.removeItem('skillswap_user');
   localStorage.removeItem('skillswap_role');
+  showToast('Logged out. Redirecting...', 'info');
   setTimeout(() => {
     window.location.href = 'login.html';
   }, 400);
 }
 
 // ==========================================================================
-// 5. GLOBAL BROADCAST BANNER COMPONENT
+// 5. FIX #5: CUSTOM GLASS DROPDOWNS
 // ==========================================================================
-function renderBroadcastBanner() {
-  const container = document.getElementById('broadcastContainer');
-  const banner = document.getElementById('broadcastBanner');
-  const tag = document.getElementById('broadcastTypeTag');
-  const text = document.getElementById('broadcastMessageText');
-
-  if (!AppState.broadcast || !AppState.broadcast.active) {
-    container.style.display = 'none';
-    return;
+function toggleDropdown(dropdownId) {
+  const el = document.getElementById(dropdownId);
+  const isOpen = el.classList.contains('open');
+  closeAllDropdowns();
+  if (!isOpen) {
+    el.classList.add('open');
   }
+  event.stopPropagation();
+}
 
-  container.style.display = 'block';
-  text.textContent = AppState.broadcast.text;
+function closeAllDropdowns() {
+  document.querySelectorAll('.custom-dropdown').forEach(d => d.classList.remove('open'));
+}
 
-  banner.className = 'glass-elevated broadcast-banner';
-  if (AppState.broadcast.type === 'warning') {
-    banner.classList.add('alert-warning');
-    tag.textContent = 'Advisory';
-  } else if (AppState.broadcast.type === 'critical') {
-    banner.classList.add('alert-critical');
-    tag.textContent = 'Urgent Notice';
+function selectDropdownOption(type, value, label) {
+  if (type === 'availability') {
+    AppState.filterAvailability = value;
+    document.getElementById('selectedAvailabilityLabel').textContent = label;
+    updateDropdownActiveItem('dropdownAvailability', label);
+  } else if (type === 'rating') {
+    AppState.filterRating = parseFloat(value);
+    document.getElementById('selectedRatingLabel').textContent = label;
+    updateDropdownActiveItem('dropdownRating', label);
+  }
+  closeAllDropdowns();
+  applyFilters();
+}
+
+function updateDropdownActiveItem(dropdownId, selectedLabel) {
+  const items = document.querySelectorAll(`#${dropdownId} .custom-dropdown-item`);
+  items.forEach(item => {
+    const isMatch = item.querySelector('span').textContent.trim() === selectedLabel.trim();
+    item.classList.toggle('selected', isMatch);
+    let check = item.querySelector('.check-icon');
+    if (isMatch && !check) {
+      check = document.createElement('span');
+      check.className = 'check-icon';
+      check.textContent = '✓';
+      item.appendChild(check);
+    } else if (!isMatch && check) {
+      check.remove();
+    }
+  });
+}
+
+// ==========================================================================
+// 6. FIX #4: RIGHT-SIDE SLIDE-OUT AI COPILOT DRAWER
+// ==========================================================================
+function toggleAiDrawer() {
+  const drawer = document.getElementById('aiDrawer');
+  const overlay = document.getElementById('aiDrawerOverlay');
+  const isOpen = drawer.classList.contains('open');
+
+  if (isOpen) {
+    closeAiDrawer();
   } else {
-    tag.textContent = 'Announcement';
+    openAiDrawer();
   }
 }
 
-function dismissBroadcast() {
-  const container = document.getElementById('broadcastContainer');
-  container.style.display = 'none';
-  showToast('Broadcast banner dismissed for this session', 'info');
+function openAiDrawer() {
+  document.getElementById('aiDrawer').classList.add('open');
+  document.getElementById('aiDrawerOverlay').classList.add('active');
+  renderAiDrawerMessages();
+}
+
+function closeAiDrawer() {
+  document.getElementById('aiDrawer').classList.remove('open');
+  document.getElementById('aiDrawerOverlay').classList.remove('active');
+}
+
+function renderAiDrawerMessages() {
+  const container = document.getElementById('aiDrawerMessages');
+  if (!container) return;
+
+  container.innerHTML = AppState.chatMessages.map(msg => `
+    <div style="display: flex; gap: 10px; align-self: ${msg.sender === 'ai' ? 'flex-start' : 'flex-end'}; max-width: 85%;">
+      <div style="padding: 12px 16px; border-radius: 16px; font-size: 0.88rem; line-height: 1.45; ${msg.sender === 'ai' ? 'background: rgba(255,255,255,0.9); border: 1px solid rgba(255,255,255,0.95); color: var(--text-main);' : 'background: var(--primary); color: white;'}">
+        ${msg.text}
+        ${msg.actionsHtml ? msg.actionsHtml : ''}
+      </div>
+    </div>
+  `).join('');
+
+  container.scrollTop = container.scrollHeight;
+}
+
+function sendAiPrompt(promptText) {
+  const input = document.getElementById('aiChatInput');
+  input.value = promptText;
+  handleAiChatSubmit(new Event('submit'));
+}
+
+async function handleAiChatSubmit(e) {
+  e.preventDefault();
+  const input = document.getElementById('aiChatInput');
+  const userText = input.value.trim();
+  if (!userText) return;
+
+  AppState.chatMessages.push({ sender: 'user', text: userText });
+  input.value = '';
+  renderAiDrawerMessages();
+
+  setTimeout(() => {
+    const reply = generateAiCopilotResponse(userText);
+    AppState.chatMessages.push(reply);
+    renderAiDrawerMessages();
+  }, 450);
+}
+
+function generateAiCopilotResponse(query) {
+  const q = query.toLowerCase();
+
+  if (q.includes('figma') || q.includes('design')) {
+    const matched = AppState.users.filter(u => u.skillsOffered.some(s => s.toLowerCase().includes('figma')));
+    return {
+      sender: 'ai',
+      text: `🎨 Found <strong>${matched.length} swappers</strong> teaching Figma UI/UX:`,
+      actionsHtml: `
+        <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
+          ${matched.map(u => `
+            <div style="padding: 8px 10px; background: rgba(255,255,255,0.8); border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong>${u.name}</strong> (${u.location})
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" onclick="openSwapRequestModal('${u.id}'); closeAiDrawer();">Swap</button>
+            </div>
+          `).join('')}
+        </div>
+      `
+    };
+  }
+
+  if (q.includes('pending') || q.includes('my swaps')) {
+    const pendingIncoming = AppState.swaps.filter(s => s.type === 'incoming' && s.status === 'pending');
+    return {
+      sender: 'ai',
+      text: `🔄 You have <strong>${pendingIncoming.length} pending incoming requests</strong>. Top request: <strong>${pendingIncoming[0] ? pendingIncoming[0].partnerName : 'None'}</strong> offering <em>${pendingIncoming[0] ? pendingIncoming[0].skillOfferedToUser : ''}</em>.`
+    };
+  }
+
+  if (q.includes('match') || q.includes('reciprocal')) {
+    return {
+      sender: 'ai',
+      text: `⚡ Your highest mutual match is <strong>Elena Rostova</strong> (98% Compatibility)! She wants to learn <em>Python Programming</em> and teaches <em>Figma UI/UX</em>.`
+    };
+  }
+
+  return {
+    sender: 'ai',
+    text: `Understood! I've analyzed your skill exchange directory for "${query}". Check the Matches tab or Explore feed for live barter listings.`
+  };
 }
 
 // ==========================================================================
-// 6. VIEW 1: SEARCH & DISCOVERY (EXPLORE)
+// 7. FIX #7: AIRY, MINIMAL USER CARDS & EXPLORE VIEW
 // ==========================================================================
 function handleSearchInput() {
   const input = document.getElementById('searchInput');
@@ -508,8 +509,7 @@ function handleSearchInput() {
 }
 
 function clearSearch() {
-  const input = document.getElementById('searchInput');
-  input.value = '';
+  document.getElementById('searchInput').value = '';
   document.getElementById('searchClearBtn').classList.remove('visible');
   AppState.searchQuery = '';
   applyFilters();
@@ -523,12 +523,6 @@ function setCategoryFilter(category, buttonEl) {
 }
 
 function applyFilters() {
-  const availSelect = document.getElementById('filterAvailability');
-  const ratingSelect = document.getElementById('filterRating');
-
-  AppState.filterAvailability = availSelect ? availSelect.value : 'all';
-  AppState.filterRating = ratingSelect ? parseFloat(ratingSelect.value) : 0;
-
   renderExploreProfiles();
 }
 
@@ -537,10 +531,8 @@ function renderExploreProfiles() {
   if (!grid) return;
 
   const filtered = AppState.users.filter(user => {
-    // Visibility Check (Skip private profiles unless it's self)
     if (user.visibility === 'private') return false;
 
-    // Search query check
     if (AppState.searchQuery) {
       const matchName = user.name.toLowerCase().includes(AppState.searchQuery);
       const matchLoc = user.location.toLowerCase().includes(AppState.searchQuery);
@@ -549,7 +541,6 @@ function renderExploreProfiles() {
       if (!matchName && !matchLoc && !matchOffered && !matchWanted) return false;
     }
 
-    // Category chip check
     if (AppState.activeCategory !== 'all') {
       const cat = AppState.activeCategory.toLowerCase();
       const matchOfferedCat = user.skillsOffered.some(s => s.toLowerCase().includes(cat));
@@ -557,12 +548,10 @@ function renderExploreProfiles() {
       if (!matchOfferedCat && !matchWantedCat) return false;
     }
 
-    // Availability check
     if (AppState.filterAvailability !== 'all') {
       if (user.availability !== AppState.filterAvailability) return false;
     }
 
-    // Rating check
     if (AppState.filterRating > 0) {
       if (user.rating < AppState.filterRating) return false;
     }
@@ -572,271 +561,130 @@ function renderExploreProfiles() {
 
   if (filtered.length === 0) {
     grid.innerHTML = `
-      <div class="glass-card empty-state-card" style="grid-column: 1 / -1;">
-        <div class="empty-state-icon">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        </div>
-        <h3 class="empty-state-title">No swappers match your current filters</h3>
-        <p class="empty-state-sub">Try searching for a different skill or reset your availability and rating filters.</p>
-        <button type="button" class="btn btn-primary" onclick="resetAllFilters()">Reset All Filters</button>
+      <div class="glass-card" style="grid-column: 1 / -1; text-align: center; padding: 48px 20px;">
+        <h3 style="font-family: var(--font-heading); font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">
+          No swappers found
+        </h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+          Try adjusting your search terms or availability filters.
+        </p>
+        <button type="button" class="btn btn-primary" onclick="resetFilters()">Reset Filters</button>
       </div>
     `;
     return;
   }
 
-  grid.innerHTML = filtered.map(user => `
-    <article class="glass-card profile-card" id="card-${user.id}">
-      <div>
-        <div class="profile-card-header">
-          <div class="profile-avatar-container">
-            <img src="${user.avatar}" alt="${user.name}" class="profile-avatar-img">
-            <span class="profile-status-dot" title="Active Swapper"></span>
-          </div>
-          <div class="profile-meta">
-            <div class="profile-name-row">
-              <h3 class="profile-name">${user.name}</h3>
-              <span class="profile-rating">★ ${user.rating} (${user.reviewCount || 6})</span>
-            </div>
-            <div class="profile-location">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-              <span>${user.location}</span>
-            </div>
-            <span class="profile-availability-badge">🕒 ${user.availability}</span>
-          </div>
-        </div>
+  // FIX #7: Airy, Minimal User Card Layout
+  grid.innerHTML = filtered.map(user => {
+    const mainTeachesTitle = user.primarySkill || user.skillsOffered[0];
+    const mainTeachesDesc = user.skillDesc || 'Experienced mentor eager to share practical workflows and guide step-by-step.';
 
-        <p class="profile-bio">${user.bio}</p>
-
-        <!-- Skills Section -->
-        <div class="card-skills-section">
-          <div class="skill-group-offered">
-            <div class="skill-group-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              Skills Offered (Teaches)
-            </div>
-            <div class="skill-tags-wrap">
-              ${user.skillsOffered.map(s => `<span class="skill-tag-pill skill-tag-offered">${s}</span>`).join('')}
+    return `
+      <article class="glass-card profile-card-minimal" id="card-${user.id}">
+        <div>
+          <!-- Top Row: Avatar + Name + City + Rating Pill -->
+          <div class="card-top-row">
+            <img src="${user.avatar}" alt="${user.name}" class="card-avatar">
+            <div class="card-user-info">
+              <div class="card-name-row">
+                <span class="card-name">${user.name}</span>
+                <span class="card-rating-pill">★ ${user.rating}</span>
+              </div>
+              <div class="card-city">${user.location} • ${user.availability}</div>
             </div>
           </div>
 
-          <div class="skill-group-wanted">
-            <div class="skill-group-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-              Skills Wanted (Learns)
-            </div>
-            <div class="skill-tags-wrap">
-              ${user.skillsWanted.map(s => `<span class="skill-tag-pill skill-tag-wanted">${s}</span>`).join('')}
+          <!-- TEACHES: 1 bold skill title + 1 line description -->
+          <div class="card-teaches-block">
+            <div class="card-label-small">TEACHES</div>
+            <div class="card-teaches-title">${mainTeachesTitle}</div>
+            <div class="card-teaches-desc">${mainTeachesDesc}</div>
+          </div>
+
+          <!-- Wants to learn: compact frosted inner box -->
+          <div class="card-wants-box">
+            <div class="card-wants-label">Wants to learn:</div>
+            <div class="card-wants-pills">
+              ${user.skillsWanted.map(skill => `<span class="pill-wanted">${skill}</span>`).join('')}
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Action Buttons -->
-      <div class="profile-card-footer">
-        <button type="button" class="btn btn-primary btn-swap" onclick="openSwapRequestModal('${user.id}')">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"></path></svg>
-          <span>Request Swap</span>
-        </button>
-        <button type="button" class="btn btn-glass" onclick="triggerAiProfileSummary('${user.id}')" title="Generate AI Compatibility Insight">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-          <span>AI Insight</span>
-        </button>
-      </div>
-    </article>
-  `).join('');
+        <!-- Clean Card Footer: Full-width button + subtle icon buttons -->
+        <div class="card-footer-clean">
+          <button type="button" class="btn btn-primary btn-propose-swap" onclick="openSwapRequestModal('${user.id}')">
+            <span>Propose Skill Swap</span>
+          </button>
+          <button type="button" class="btn-card-action" title="AI Insight Summary" onclick="triggerAiProfileSummary('${user.id}')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </button>
+          <button type="button" class="btn-card-action" title="Report Inappropriate Content" onclick="openReportModal('${user.id}')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+          </button>
+        </div>
+      </article>
+    `;
+  }).join('');
 }
 
-function resetAllFilters() {
+function resetFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClearBtn').classList.remove('visible');
   AppState.searchQuery = '';
   AppState.activeCategory = 'all';
-  AppState.filterAvailability = 'all';
-  AppState.filterRating = 0;
-
-  const searchInput = document.getElementById('searchInput');
-  if (searchInput) searchInput.value = '';
-  const filterAvail = document.getElementById('filterAvailability');
-  if (filterAvail) filterAvail.value = 'all';
-  const filterRating = document.getElementById('filterRating');
-  if (filterRating) filterRating.value = '0';
-  document.querySelectorAll('#categoryChips .category-chip').forEach((c, i) => {
-    c.classList.toggle('active', i === 0);
-  });
+  selectDropdownOption('availability', 'all', 'Any Availability');
+  selectDropdownOption('rating', 0, 'Any Rating');
+  document.querySelectorAll('#categoryChips .category-chip').forEach((c, i) => c.classList.toggle('active', i === 0));
   renderExploreProfiles();
 }
 
 // ==========================================================================
-// 7. VIEW 2: USER PROFILE & SKILLS MANAGEMENT
+// 8. VIEW: MATCHES (SMART RECIPROCAL BARTER MATCHMAKER)
 // ==========================================================================
-function syncProfileFormData() {
-  const user = AppState.currentUser;
+function renderMatchesView() {
+  const grid = document.getElementById('matchesGrid');
+  if (!grid) return;
 
-  // Sidebar
-  document.getElementById('sidebarAvatarPreview').src = user.avatar;
-  document.getElementById('sidebarName').textContent = user.name;
-  document.getElementById('sidebarEmail').textContent = user.email;
-  document.getElementById('sidebarRating').textContent = `★ ${user.rating} Rating`;
-  document.getElementById('sidebarSwapsCount').textContent = `${user.swapsCompleted} Swaps`;
+  const matches = AppState.users.map(u => {
+    // Check dual overlap
+    const theyWantWhatIOffer = u.skillsWanted.some(w => AppState.currentUser.skillsOffered.some(o => o.toLowerCase().includes(w.toLowerCase())));
+    const iWantWhatTheyOffer = u.skillsOffered.some(o => AppState.currentUser.skillsWanted.some(w => w.toLowerCase().includes(o.toLowerCase())));
 
-  const toggle = document.getElementById('profileVisibilityToggle');
-  toggle.checked = user.visibility === 'public';
-  updateVisibilityText(toggle.checked);
+    let score = 75;
+    if (theyWantWhatIOffer && iWantWhatTheyOffer) score = 98;
+    else if (theyWantWhatIOffer || iWantWhatTheyOffer) score = 88;
 
-  // Form Fields
-  document.getElementById('profileFullName').value = user.name;
-  document.getElementById('profileLocation').value = user.location || '';
-  document.getElementById('profileBio').value = user.bio || '';
+    return { ...u, compatibilityScore: score };
+  }).sort((a, b) => b.compatibilityScore - a.compatibilityScore);
 
-  // Availability Checkboxes
-  document.querySelectorAll('input[name="availability"]').forEach(cb => {
-    cb.checked = user.availability.includes(cb.value);
-  });
+  grid.innerHTML = matches.map(u => `
+    <article class="glass-card match-card">
+      <span class="match-score-badge-large">✨ ${u.compatibilityScore}% Match</span>
+      
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <img src="${u.avatar}" class="card-avatar" alt="${u.name}">
+        <div>
+          <h4 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">${u.name}</h4>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">${u.location}</span>
+        </div>
+      </div>
 
-  // Render Skill Tags
-  renderEditableSkillTags('offered');
-  renderEditableSkillTags('wanted');
-}
+      <div style="background: rgba(255,255,255,0.6); padding: 12px; border-radius: var(--radius-md); margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.85);">
+        <div style="font-size: 0.78rem; font-weight: 700; color: var(--emerald-dark); margin-bottom: 2px;">THEY TEACH:</div>
+        <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">${u.skillsOffered.join(', ')}</div>
+        <div style="font-size: 0.78rem; font-weight: 700; color: var(--primary); margin-bottom: 2px;">THEY WANT TO LEARN:</div>
+        <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-main);">${u.skillsWanted.join(', ')}</div>
+      </div>
 
-function updateVisibilityText(isPublic) {
-  const desc = document.getElementById('visibilityDesc');
-  if (isPublic) {
-    desc.innerHTML = `<strong>Public:</strong> Discoverable in global search. Other users can propose swaps.`;
-  } else {
-    desc.innerHTML = `<strong style="color: var(--amber);">Private:</strong> Hidden from explore & search. You can still send outgoing swap requests.`;
-  }
-}
-
-function toggleVisibility(checkbox) {
-  AppState.currentUser.visibility = checkbox.checked ? 'public' : 'private';
-  updateVisibilityText(checkbox.checked);
-  saveStateToStorage();
-  showToast(`Profile visibility updated to ${AppState.currentUser.visibility}`, 'info');
-}
-
-function promptAvatarUrl() {
-  const current = AppState.currentUser.avatar;
-  const newUrl = prompt("Enter a valid profile photo image URL:", current);
-  if (newUrl && newUrl.trim() !== '') {
-    AppState.currentUser.avatar = newUrl.trim();
-    document.getElementById('sidebarAvatarPreview').src = AppState.currentUser.avatar;
-    document.getElementById('navUserAvatar').src = AppState.currentUser.avatar;
-    saveStateToStorage();
-    showToast('Profile photo updated!', 'success');
-  }
-}
-
-function renderEditableSkillTags(type) {
-  const container = document.getElementById(type === 'offered' ? 'offeredTagsContainer' : 'wantedTagsContainer');
-  const input = document.getElementById(type === 'offered' ? 'inputOfferedTag' : 'inputWantedTag');
-  const countBadge = document.getElementById(type === 'offered' ? 'offeredCount' : 'wantedCount');
-  const skills = type === 'offered' ? AppState.currentUser.skillsOffered : AppState.currentUser.skillsWanted;
-
-  countBadge.textContent = `${skills.length} Skill${skills.length === 1 ? '' : 's'}`;
-
-  // Clear existing pills except input
-  container.querySelectorAll('.tag-editable-pill').forEach(el => el.remove());
-
-  skills.forEach((skill, index) => {
-    const pill = document.createElement('span');
-    pill.className = `tag-editable-pill ${type}`;
-    pill.innerHTML = `
-      <span>${skill}</span>
-      <button type="button" class="tag-remove-btn" onclick="removeSkillTag('${type}', ${index})" title="Remove skill">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <button type="button" class="btn btn-primary" style="width: 100%;" onclick="openSwapRequestModal('${u.id}')">
+        <span>Initiate Reciprocal Swap</span>
       </button>
-    `;
-    container.insertBefore(pill, input);
-  });
-}
-
-function removeSkillTag(type, index) {
-  if (type === 'offered') {
-    AppState.currentUser.skillsOffered.splice(index, 1);
-  } else {
-    AppState.currentUser.skillsWanted.splice(index, 1);
-  }
-  renderEditableSkillTags(type);
-}
-
-function addSkillTag(type, skillName) {
-  const cleanName = skillName.trim();
-  if (!cleanName) return;
-
-  const targetList = type === 'offered' ? AppState.currentUser.skillsOffered : AppState.currentUser.skillsWanted;
-  if (targetList.includes(cleanName)) {
-    showToast(`"${cleanName}" is already added!`, 'error');
-    return;
-  }
-
-  targetList.push(cleanName);
-  renderEditableSkillTags(type);
-  showToast(`Added "${cleanName}" to ${type === 'offered' ? 'Skills Offered' : 'Skills Wanted'}`, 'success');
-}
-
-function addSkillQuick(type, skillName) {
-  addSkillTag(type, skillName);
-}
-
-// Attach Enter listener to inline tag inputs
-document.addEventListener('DOMContentLoaded', () => {
-  const inputOffered = document.getElementById('inputOfferedTag');
-  if (inputOffered) {
-    inputOffered.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        addSkillTag('offered', inputOffered.value);
-        inputOffered.value = '';
-      }
-    });
-  }
-
-  const inputWanted = document.getElementById('inputWantedTag');
-  if (inputWanted) {
-    inputWanted.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        addSkillTag('wanted', inputWanted.value);
-        inputWanted.value = '';
-      }
-    });
-  }
-});
-
-async function saveUserProfile(e) {
-  e.preventDefault();
-  const name = document.getElementById('profileFullName').value.trim();
-  const location = document.getElementById('profileLocation').value.trim();
-  const bio = document.getElementById('profileBio').value.trim();
-
-  const selectedAvail = [];
-  document.querySelectorAll('input[name="availability"]:checked').forEach(cb => {
-    selectedAvail.push(cb.value);
-  });
-
-  if (selectedAvail.length === 0) {
-    showToast('Please select at least one availability slot', 'error');
-    return;
-  }
-
-  AppState.currentUser.name = name;
-  AppState.currentUser.location = location;
-  AppState.currentUser.bio = bio;
-  AppState.currentUser.availability = selectedAvail;
-
-  // Placeholder for Flask /api/profile/update POST:
-  /*
-  await ApiService.request(CONFIG.ENDPOINTS.UPDATE_PROFILE, {
-    method: 'POST',
-    body: JSON.stringify(AppState.currentUser)
-  });
-  */
-
-  saveStateToStorage();
-  updateNavbarUserSnippet();
-  showToast('Profile and Skill preferences saved successfully!', 'success');
+    </article>
+  `).join('');
 }
 
 // ==========================================================================
-// 8. VIEW 3: SWAP REQUESTS & RATINGS WORKFLOW
+// 9. VIEW: SWAP REQUESTS & RATINGS WORKFLOW
 // ==========================================================================
 function switchSwapSubtab(tab) {
   AppState.activeSwapSubtab = tab;
@@ -869,13 +717,8 @@ function renderSwapsList() {
 
   if (filteredSwaps.length === 0) {
     container.innerHTML = `
-      <div class="glass-card empty-state-card">
-        <div class="empty-state-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"></path></svg>
-        </div>
-        <h3 class="empty-state-title">No ${AppState.activeSwapSubtab} swaps right now</h3>
-        <p class="empty-state-sub">Explore discoverable peers to initiate a new skill trade proposition!</p>
-        <button type="button" class="btn btn-primary" onclick="navigateTo('explore')">Browse Swappers</button>
+      <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+        No ${AppState.activeSwapSubtab} swap propositions at this time.
       </div>
     `;
     return;
@@ -885,93 +728,57 @@ function renderSwapsList() {
     if (AppState.activeSwapSubtab === 'incoming') {
       return `
         <div class="swap-item-card" id="swap-${swap.id}">
-          <div class="swap-item-left">
-            <img src="${swap.partnerAvatar}" alt="${swap.partnerName}" class="swap-user-avatar">
-            <div class="swap-details-body">
-              <h4>${swap.partnerName} <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-muted);">${swap.partnerLocation} • ${swap.date}</span></h4>
-              <div class="swap-skills-exchange-row">
-                <span>They teach: <strong style="color: var(--emerald-dark);">${swap.skillOfferedToUser}</strong></span>
-                <span class="swap-exchange-arrow">⇄</span>
-                <span>You teach: <strong style="color: var(--primary);">${swap.skillWantedFromUser}</strong></span>
-                ${swap.compatibilityScore ? `<span class="badge badge-mint" style="font-size: 0.72rem;">✨ ${swap.compatibilityScore}</span>` : ''}
+          <div style="display: flex; align-items: center; gap: 14px; flex: 1;">
+            <img src="${swap.partnerAvatar}" alt="${swap.partnerName}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid white;">
+            <div>
+              <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-main);">${swap.partnerName} <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-muted);">${swap.date}</span></h4>
+              <div style="font-size: 0.85rem; margin-top: 2px;">
+                They teach: <strong style="color: var(--emerald-dark);">${swap.skillOfferedToUser}</strong> ⇄ You teach: <strong style="color: var(--primary);">${swap.skillWantedFromUser}</strong>
               </div>
-              <div class="swap-message-preview">"${swap.message}"</div>
+              <div style="font-size: 0.82rem; color: var(--text-muted); font-style: italic; margin-top: 4px;">"${swap.message}"</div>
             </div>
           </div>
-          <div class="swap-item-right">
+          <div style="display: flex; gap: 8px;">
             ${swap.status === 'pending' ? `
-              <div class="swap-actions-row">
-                <button type="button" class="btn btn-emerald btn-sm" onclick="handleAcceptSwap('${swap.id}')">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                  <span>Accept Swap</span>
-                </button>
-                <button type="button" class="btn btn-danger btn-sm" onclick="handleRejectSwap('${swap.id}')">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  <span>Decline</span>
-                </button>
-              </div>
-            ` : `
-              <span class="swap-status-badge badge-${swap.status === 'accepted' ? 'mint' : 'danger'}">${swap.status.toUpperCase()}</span>
-            `}
+              <button type="button" class="btn btn-emerald btn-sm" onclick="handleAcceptSwap('${swap.id}')">Accept</button>
+              <button type="button" class="btn btn-danger btn-sm" onclick="handleRejectSwap('${swap.id}')">Decline</button>
+            ` : `<span class="badge badge-mint">${swap.status.toUpperCase()}</span>`}
           </div>
         </div>
       `;
     } else if (AppState.activeSwapSubtab === 'outgoing') {
       return `
         <div class="swap-item-card" id="swap-${swap.id}">
-          <div class="swap-item-left">
-            <img src="${swap.partnerAvatar}" alt="${swap.partnerName}" class="swap-user-avatar">
-            <div class="swap-details-body">
-              <h4>To: ${swap.partnerName} <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-muted);">${swap.partnerLocation} • ${swap.date}</span></h4>
-              <div class="swap-skills-exchange-row">
-                <span>You requested: <strong style="color: var(--primary);">${swap.skillWantedFromPartner}</strong></span>
-                <span class="swap-exchange-arrow">⇄</span>
-                <span>You offered: <strong style="color: var(--emerald-dark);">${swap.skillOfferedFromUser}</strong></span>
+          <div style="display: flex; align-items: center; gap: 14px; flex: 1;">
+            <img src="${swap.partnerAvatar}" alt="${swap.partnerName}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid white;">
+            <div>
+              <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-main);">To: ${swap.partnerName} <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-muted);">${swap.date}</span></h4>
+              <div style="font-size: 0.85rem; margin-top: 2px;">
+                Requested: <strong>${swap.skillWantedFromPartner}</strong> ⇄ Offered: <strong>${swap.skillOfferedFromUser}</strong>
               </div>
-              <div class="swap-message-preview">"${swap.message}"</div>
             </div>
           </div>
-          <div class="swap-item-right">
-            <span class="badge badge-amber" style="margin-bottom: 8px;">Pending Response</span>
-            <button type="button" class="btn btn-danger btn-sm" onclick="handleCancelOutgoingSwap('${swap.id}')">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-              <span>Cancel Request</span>
-            </button>
+          <div>
+            <button type="button" class="btn btn-danger btn-sm" onclick="handleCancelOutgoingSwap('${swap.id}')">Cancel Request</button>
           </div>
         </div>
       `;
     } else {
-      // Active & Completed Tab
       const isCompleted = swap.status === 'completed';
       return `
         <div class="swap-item-card" id="swap-${swap.id}">
-          <div class="swap-item-left">
-            <img src="${swap.partnerAvatar}" alt="${swap.partnerName}" class="swap-user-avatar">
-            <div class="swap-details-body">
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
-                <h4>${swap.partnerName}</h4>
-                <span class="badge badge-${isCompleted ? 'mint' : 'plum'}">${isCompleted ? 'Completed Swap' : 'Active Exchange'}</span>
-              </div>
-              <div class="swap-skills-exchange-row">
-                <span>Exchange: <strong>${swap.skillWantedFromPartner || swap.skillWantedFromUser}</strong> ⇄ <strong>${swap.skillOfferedFromUser || swap.skillOfferedToUser}</strong></span>
-              </div>
-              <div style="font-size: 0.8rem; color: var(--text-muted);">${swap.date}</div>
+          <div style="display: flex; align-items: center; gap: 14px; flex: 1;">
+            <img src="${swap.partnerAvatar}" alt="${swap.partnerName}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid white;">
+            <div>
+              <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-main);">${swap.partnerName}</h4>
+              <div style="font-size: 0.85rem;">Status: <span class="badge badge-${isCompleted ? 'mint' : 'plum'}">${isCompleted ? 'Completed' : 'Active'}</span></div>
             </div>
           </div>
-          <div class="swap-item-right">
-            <div class="swap-actions-row">
-              ${!isCompleted ? `
-                <button type="button" class="btn btn-emerald btn-sm" onclick="handleMarkCompleted('${swap.id}')">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                  <span>Mark Completed</span>
-                </button>
-              ` : ''}
-
-              <button type="button" class="btn btn-glass btn-sm" onclick="openRatingModal('${swap.id}', '${swap.partnerName}')" style="${swap.hasReviewed ? 'color: var(--amber); border-color: var(--amber-border);' : ''}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="${swap.hasReviewed ? '#ea580c' : 'none'}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                <span>${swap.hasReviewed ? 'Reviewed ★' : 'Leave Rating & Review'}</span>
-              </button>
-            </div>
+          <div style="display: flex; gap: 8px;">
+            ${!isCompleted ? `<button type="button" class="btn btn-emerald btn-sm" onclick="handleMarkCompleted('${swap.id}')">Mark Complete</button>` : ''}
+            <button type="button" class="btn btn-glass btn-sm" onclick="openRatingModal('${swap.id}', '${swap.partnerName}')">
+              <span>${swap.hasReviewed ? 'Reviewed ★' : 'Leave Rating'}</span>
+            </button>
           </div>
         </div>
       `;
@@ -986,7 +793,7 @@ function handleAcceptSwap(swapId) {
   saveStateToStorage();
   updateNavbarUserSnippet();
   renderSwapsList();
-  showToast(`Accepted swap proposal from ${swap.partnerName}! Added to Active Swaps.`, 'success');
+  showToast(`Accepted swap with ${swap.partnerName}! Added to Active Exchanges.`, 'success');
 }
 
 function handleRejectSwap(swapId) {
@@ -996,465 +803,172 @@ function handleRejectSwap(swapId) {
   saveStateToStorage();
   updateNavbarUserSnippet();
   renderSwapsList();
-  showToast(`Declined swap request from ${swap.partnerName}.`, 'info');
+  showToast(`Declined swap proposal`, 'info');
 }
 
 function handleCancelOutgoingSwap(swapId) {
   AppState.swaps = AppState.swaps.filter(s => s.id !== swapId);
   saveStateToStorage();
   renderSwapsList();
-  showToast('Cancelled and deleted outgoing swap request.', 'info');
+  showToast('Cancelled outgoing request', 'info');
 }
 
 function handleMarkCompleted(swapId) {
   const swap = AppState.swaps.find(s => s.id === swapId);
   if (!swap) return;
   swap.status = 'completed';
-  AppState.currentUser.swapsCompleted = (AppState.currentUser.swapsCompleted || 0) + 1;
   saveStateToStorage();
   renderSwapsList();
-  showToast(`Congratulations on completing your swap with ${swap.partnerName}! Don't forget to leave feedback.`, 'success');
+  showToast(`Swap completed with ${swap.partnerName}!`, 'success');
 }
 
 // ==========================================================================
-// 9. VIEW 4: DEDICATED AI ASSISTANT SECTION (3 CORE AI FEATURES)
+// 10. USER PROFILE & SKILLS MANAGEMENT
 // ==========================================================================
-function renderAiChatHistory() {
-  const container = document.getElementById('aiChatMessages');
-  if (!container) return;
+function syncProfileFormData() {
+  const user = AppState.currentUser;
+  document.getElementById('sidebarAvatarPreview').src = user.avatar;
+  document.getElementById('sidebarName').textContent = user.name;
+  document.getElementById('sidebarEmail').textContent = user.email;
+  document.getElementById('sidebarRating').textContent = `★ ${user.rating} Rating`;
+  document.getElementById('sidebarSwapsCount').textContent = `${user.swapsCompleted} Swaps`;
 
-  container.innerHTML = AppState.chatMessages.map(msg => `
-    <div class="chat-msg ${msg.sender === 'ai' ? 'msg-ai' : 'msg-user'}">
-      <div class="chat-msg-avatar">
-        ${msg.sender === 'ai' ? 'AI' : 'You'}
-      </div>
-      <div>
-        <div class="chat-msg-bubble">
-          ${msg.text}
-        </div>
-        ${msg.actionsHtml ? msg.actionsHtml : ''}
-      </div>
-    </div>
-  `).join('');
+  const toggle = document.getElementById('profileVisibilityToggle');
+  toggle.checked = user.visibility === 'public';
+  document.getElementById('visibilityDesc').innerHTML = toggle.checked ? 
+    '<strong>Public:</strong> Discoverable in global search.' : 
+    '<strong style="color: var(--amber);">Private:</strong> Hidden from directory.';
 
-  container.scrollTop = container.scrollHeight;
-}
+  document.getElementById('profileFullName').value = user.name;
+  document.getElementById('profileLocation').value = user.location || '';
+  document.getElementById('profileBio').value = user.bio || '';
 
-function activateAiFeature(featureKey) {
-  document.querySelectorAll('.ai-feature-card').forEach(c => c.classList.remove('active'));
-  event.currentTarget.classList.add('active');
-
-  if (featureKey === 'automation') {
-    sendAiPrompt("Show me how agent automation works with my swaps");
-  } else if (featureKey === 'rag') {
-    sendAiPrompt("Generate a RAG analysis of Elena Rostova's profile compatibility");
-  } else if (featureKey === 'matchmaker') {
-    runAiInstantMatch();
-  }
-}
-
-function sendAiPrompt(promptText) {
-  const input = document.getElementById('aiChatInput');
-  input.value = promptText;
-  handleAiChatSubmit(new Event('submit'));
-}
-
-async function handleAiChatSubmit(e) {
-  e.preventDefault();
-  const input = document.getElementById('aiChatInput');
-  const userText = input.value.trim();
-  if (!userText) return;
-
-  // Add User Message
-  AppState.chatMessages.push({
-    sender: 'user',
-    text: userText
+  document.querySelectorAll('input[name="availability"]').forEach(cb => {
+    cb.checked = user.availability.includes(cb.value);
   });
-  input.value = '';
-  renderAiChatHistory();
 
-  // Show thinking indicator
-  const container = document.getElementById('aiChatMessages');
-  const thinkingId = 'thinking-' + Date.now();
-  const thinkingEl = document.createElement('div');
-  thinkingEl.className = 'chat-msg msg-ai';
-  thinkingEl.id = thinkingId;
-  thinkingEl.innerHTML = `
-    <div class="chat-msg-avatar">AI</div>
-    <div class="chat-msg-bubble" style="color: var(--text-muted); font-style: italic;">
-      Analyzing SkillSwap directory and processing intent...
-    </div>
-  `;
-  container.appendChild(thinkingEl);
-  container.scrollTop = container.scrollHeight;
-
-  // Simulate AI LLM Response logic
-  setTimeout(() => {
-    thinkingEl.remove();
-    const reply = generateAiAgentResponse(userText);
-    AppState.chatMessages.push(reply);
-    renderAiChatHistory();
-  }, 650);
+  renderEditableSkillTags('offered');
+  renderEditableSkillTags('wanted');
 }
 
-function generateAiAgentResponse(query) {
-  const q = query.toLowerCase();
-
-  // Intent 1: Agent Automation - Filter Swappers
-  if (q.includes('figma') || q.includes('design')) {
-    const matched = AppState.users.filter(u => u.skillsOffered.some(s => s.toLowerCase().includes('figma') || s.toLowerCase().includes('design')));
-    return {
-      sender: 'ai',
-      text: `🤖 <strong>Agent Automation:</strong> I scanned the platform directory and found <strong>${matched.length} verified swappers</strong> teaching Figma UI/UX:`,
-      actionsHtml: `
-        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
-          ${matched.map(u => `
-            <div class="ai-inline-result-card">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <img src="${u.avatar}" class="user-avatar-sm" alt="${u.name}">
-                <div>
-                  <div style="font-weight: 700; font-size: 0.88rem;">${u.name} (${u.location})</div>
-                  <div style="font-size: 0.76rem; color: var(--emerald-dark);">Teaches: ${u.skillsOffered.join(', ')}</div>
-                </div>
-              </div>
-              <button type="button" class="btn btn-primary btn-sm" onclick="openSwapRequestModal('${u.id}')">Request Swap</button>
-            </div>
-          `).join('')}
-        </div>
-      `
-    };
-  }
-
-  // Intent 2: Agent Automation - Pending Swaps Summary
-  if (q.includes('pending') || q.includes('my swaps') || q.includes('summarize my pending')) {
-    const pendingIncoming = AppState.swaps.filter(s => s.type === 'incoming' && s.status === 'pending');
-    return {
-      sender: 'ai',
-      text: `🔄 <strong>Swap Manager Automation:</strong> You have <strong>${pendingIncoming.length} incoming pending swap offers</strong> awaiting your response:`,
-      actionsHtml: `
-        <div style="margin-top: 10px; background: rgba(255, 255, 255, 0.7); border-radius: var(--radius-md); padding: 12px; border: 1px solid rgba(255, 255, 255, 0.9);">
-          ${pendingIncoming.map(s => `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(0,0,0,0.05);">
-              <div>
-                <strong>${s.partnerName}</strong> proposes <em>${s.skillOfferedToUser}</em> for your <em>${s.skillWantedFromUser}</em>.
-              </div>
-              <button type="button" class="btn btn-emerald btn-sm" onclick="handleAcceptSwap('${s.id}')">Accept Now</button>
-            </div>
-          `).join('')}
-          <div style="text-align: right; margin-top: 4px;">
-            <button type="button" class="btn btn-glass btn-sm" onclick="navigateTo('swaps')">Open Swaps Tab</button>
-          </div>
-        </div>
-      `
-    };
-  }
-
-  // Intent 3: Smart Matchmaker (Reciprocal Barter Algorithm)
-  if (q.includes('match') || q.includes('reciprocal') || q.includes('compatibility')) {
-    const bestMatch = AppState.users.find(u => u.name.includes('Elena')) || AppState.users[0];
-    return {
-      sender: 'ai',
-      text: `🎯 <strong>Smart Matchmaker (Dual-Barter Overlap):</strong><br>
-      Your optimal mutual match is <strong>${bestMatch.name}</strong> with an algorithmic compatibility score of <span class="ai-match-score-badge">98% Match</span>.<br><br>
-      • <strong>Why:</strong> Elena wants to learn <em>Python Programming</em> (your primary offered skill), and can teach <em>Figma UI/UX & Design Systems</em> (your primary wanted skill). Both of you are available on weekends!`,
-      actionsHtml: `
-        <div class="ai-inline-result-card" style="margin-top: 10px;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <img src="${bestMatch.avatar}" class="user-avatar-sm" alt="${bestMatch.name}">
-            <div>
-              <div style="font-weight: 700;">${bestMatch.name}</div>
-              <div style="font-size: 0.76rem; color: var(--text-muted);">Availability: ${bestMatch.availability}</div>
-            </div>
-          </div>
-          <button type="button" class="btn btn-primary btn-sm" onclick="openSwapRequestModal('${bestMatch.id}')">Propose Swap Now</button>
-        </div>
-      `
-    };
-  }
-
-  // Default Agent Assistant Response
-  return {
-    sender: 'ai',
-    text: `I understood your query about "${query}". As your SkillSwap Assistant, I can automate search filters, evaluate reciprocal skills, or create personalized lesson plans for your next swap session. You can also click the quick prompt pills below!`,
-    actionsHtml: null
-  };
-}
-
-function clearAiChat() {
-  AppState.chatMessages = [
-    {
-      sender: 'ai',
-      text: "Chat history cleared. What skill would you like to explore next, Alex?",
-      actionsHtml: null
-    }
-  ];
-  renderAiChatHistory();
-  showToast('AI conversation reset', 'info');
-}
-
-function runAiInstantMatch() {
-  navigateTo('ai');
-  sendAiPrompt("Who is my highest compatibility dual-swap match?");
-}
-
-// ==========================================================================
-// 10. VIEW 5: ADMIN ROLE DASHBOARD
-// ==========================================================================
-function switchAdminTab(tabKey) {
-  AppState.activeAdminTab = tabKey;
-  document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
-  const activeBtn = document.getElementById(`adminTab-${tabKey}`);
-  if (activeBtn) activeBtn.classList.add('active');
-
-  document.querySelectorAll('.admin-subcontent').forEach(c => c.style.display = 'none');
-  const targetContent = document.getElementById(`adminContent-${tabKey}`);
-  if (targetContent) targetContent.style.display = 'block';
-
-  if (tabKey === 'moderation') renderModerationQueue();
-  if (tabKey === 'swaps') renderAdminSwapsMonitor();
-}
-
-function renderAdminView() {
-  // Update stats counters
-  document.getElementById('statTotalUsers').textContent = AppState.users.length + 1420;
-  document.getElementById('statActiveSwaps').textContent = AppState.swaps.filter(s => s.status === 'accepted').length + 340;
-  document.getElementById('statModQueue').textContent = AppState.moderationItems.length;
-
-  switchAdminTab(AppState.activeAdminTab);
-}
-
-function renderModerationQueue() {
-  const tbody = document.getElementById('moderationTableBody');
-  if (!tbody) return;
-
-  if (AppState.moderationItems.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="5" style="text-align: center; padding: 32px; color: var(--emerald-dark); font-weight: 600;">
-          🎉 All clear! No flagged skills or users in the moderation queue.
-        </td>
-      </tr>
-    `;
-    return;
-  }
-
-  tbody.innerHTML = AppState.moderationItems.map(item => `
-    <tr id="mod-row-${item.id}">
-      <td>
-        <strong>@${item.targetUser}</strong>
-        <div style="font-size: 0.74rem; color: var(--text-muted);">${item.userEmail}</div>
-      </td>
-      <td style="max-width: 240px; font-size: 0.84rem;">
-        "${item.content}"
-      </td>
-      <td>
-        <span class="ai-report-badge">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-          ${item.aiCategory}
-        </span>
-        <div style="font-size: 0.7rem; color: var(--text-light); margin-top: 3px;">Confidence: ${item.aiConfidence}</div>
-      </td>
-      <td style="max-width: 260px; font-size: 0.78rem; color: var(--text-muted);">
-        ${item.aiReason}
-      </td>
-      <td>
-        <div style="display: flex; gap: 6px;">
-          <button type="button" class="btn btn-danger btn-sm" onclick="handleModerationAction('${item.id}', 'reject')">
-            Reject Skill
-          </button>
-          <button type="button" class="btn btn-glass btn-sm" style="color: var(--danger);" onclick="handleModerationAction('${item.id}', 'ban')">
-            Ban User
-          </button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="handleModerationAction('${item.id}', 'dismiss')">
-            Dismiss
-          </button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
-}
-
-function handleModerationAction(modId, action) {
-  const item = AppState.moderationItems.find(m => m.id === modId);
-  if (!item) return;
-
-  AppState.moderationItems = AppState.moderationItems.filter(m => m.id !== modId);
+function toggleVisibility(checkbox) {
+  AppState.currentUser.visibility = checkbox.checked ? 'public' : 'private';
+  document.getElementById('visibilityDesc').innerHTML = checkbox.checked ? 
+    '<strong>Public:</strong> Discoverable in global search.' : 
+    '<strong style="color: var(--amber);">Private:</strong> Hidden from directory.';
   saveStateToStorage();
-  renderModerationQueue();
-  document.getElementById('statModQueue').textContent = AppState.moderationItems.length;
+  showToast(`Profile visibility: ${AppState.currentUser.visibility}`, 'info');
+}
 
-  if (action === 'reject') {
-    showToast(`Rejected & pruned flagged skill listing from @${item.targetUser}`, 'success');
-  } else if (action === 'ban') {
-    showToast(`Banned user @${item.targetUser} and revoked OAuth credentials`, 'error');
-  } else {
-    showToast(`Dismissed moderation flag for @${item.targetUser}`, 'info');
+function promptAvatarUrl() {
+  const current = AppState.currentUser.avatar;
+  const newUrl = prompt("Enter a profile photo image URL:", current);
+  if (newUrl && newUrl.trim() !== '') {
+    AppState.currentUser.avatar = newUrl.trim();
+    document.getElementById('sidebarAvatarPreview').src = AppState.currentUser.avatar;
+    document.getElementById('navUserAvatar').src = AppState.currentUser.avatar;
+    saveStateToStorage();
+    showToast('Profile photo updated!', 'success');
   }
 }
 
-function filterAdminSwaps(statusFilter, btnEl) {
-  AppState.adminSwapFilter = statusFilter;
-  document.querySelectorAll('#adminContent-swaps .category-chip').forEach(c => c.classList.remove('active'));
-  if (btnEl) btnEl.classList.add('active');
-  renderAdminSwapsMonitor();
-}
+function renderEditableSkillTags(type) {
+  const container = document.getElementById(type === 'offered' ? 'offeredTagsContainer' : 'wantedTagsContainer');
+  const input = document.getElementById(type === 'offered' ? 'inputOfferedTag' : 'inputWantedTag');
+  const countBadge = document.getElementById(type === 'offered' ? 'offeredCount' : 'wantedCount');
+  const skills = type === 'offered' ? AppState.currentUser.skillsOffered : AppState.currentUser.skillsWanted;
 
-function renderAdminSwapsMonitor() {
-  const tbody = document.getElementById('adminSwapsTableBody');
-  if (!tbody) return;
+  countBadge.textContent = `${skills.length} Skill${skills.length === 1 ? '' : 's'}`;
+  container.querySelectorAll('.tag-editable-pill').forEach(el => el.remove());
 
-  let list = AppState.swaps;
-  if (AppState.adminSwapFilter !== 'all') {
-    list = AppState.swaps.filter(s => s.status === AppState.adminSwapFilter);
-  }
-
-  tbody.innerHTML = list.map(s => {
-    let statusClass = 'neutral';
-    if (s.status === 'accepted') statusClass = 'mint';
-    if (s.status === 'pending') statusClass = 'amber';
-    if (s.status === 'cancelled') statusClass = 'danger';
-
-    return `
-      <tr>
-        <td><code>#${s.id}</code></td>
-        <td><strong>${s.type === 'incoming' ? s.partnerName : AppState.currentUser.name}</strong></td>
-        <td><strong>${s.type === 'incoming' ? AppState.currentUser.name : s.partnerName}</strong></td>
-        <td>${s.skillWantedFromUser || s.skillWantedFromPartner} ⇄ ${s.skillOfferedToUser || s.skillOfferedFromUser}</td>
-        <td>${s.date}</td>
-        <td><span class="badge badge-${statusClass}">${s.status.toUpperCase()}</span></td>
-      </tr>
+  skills.forEach((skill, index) => {
+    const pill = document.createElement('span');
+    pill.className = `tag-editable-pill ${type}`;
+    pill.innerHTML = `
+      <span>${skill}</span>
+      <button type="button" class="tag-remove-btn" onclick="removeSkillTag('${type}', ${index})" title="Remove">×</button>
     `;
-  }).join('');
+    container.insertBefore(pill, input);
+  });
 }
 
-function updateBroadcastPreview() {
-  const type = document.getElementById('broadcastTypeSelect').value;
-  const text = document.getElementById('broadcastTextInput').value;
+function removeSkillTag(type, index) {
+  if (type === 'offered') AppState.currentUser.skillsOffered.splice(index, 1);
+  else AppState.currentUser.skillsWanted.splice(index, 1);
+  renderEditableSkillTags(type);
+}
 
-  const previewBanner = document.getElementById('adminPreviewBanner');
-  const previewBadge = document.getElementById('previewBadgeTag');
-  const previewText = document.getElementById('previewMessageText');
-
-  previewText.textContent = text || 'Your broadcast message preview here...';
-  previewBanner.className = 'broadcast-banner';
-
-  if (type === 'warning') {
-    previewBanner.classList.add('alert-warning');
-    previewBadge.textContent = 'Advisory';
-  } else if (type === 'critical') {
-    previewBanner.classList.add('alert-critical');
-    previewBadge.textContent = 'Urgent Notice';
-  } else {
-    previewBadge.textContent = 'Announcement';
+function addSkillTag(type, skillName) {
+  const cleanName = skillName.trim();
+  if (!cleanName) return;
+  const target = type === 'offered' ? AppState.currentUser.skillsOffered : AppState.currentUser.skillsWanted;
+  if (!target.includes(cleanName)) {
+    target.push(cleanName);
+    renderEditableSkillTags(type);
+    showToast(`Added ${cleanName}`, 'success');
   }
 }
 
-function handleSendBroadcast(e) {
+function saveUserProfile(e) {
   e.preventDefault();
-  const type = document.getElementById('broadcastTypeSelect').value;
-  const text = document.getElementById('broadcastTextInput').value.trim();
+  AppState.currentUser.name = document.getElementById('profileFullName').value.trim();
+  AppState.currentUser.location = document.getElementById('profileLocation').value.trim();
+  AppState.currentUser.bio = document.getElementById('profileBio').value.trim();
 
-  AppState.broadcast = {
-    active: true,
-    type: type,
-    text: text
-  };
+  const selectedAvail = [];
+  document.querySelectorAll('input[name="availability"]:checked').forEach(cb => selectedAvail.push(cb.value));
+  AppState.currentUser.availability = selectedAvail;
 
   saveStateToStorage();
-  renderBroadcastBanner();
-  showToast('Platform broadcast banner published live!', 'success');
-}
-
-function handleClearBroadcast() {
-  AppState.broadcast.active = false;
-  saveStateToStorage();
-  renderBroadcastBanner();
-  showToast('Platform broadcast banner cleared.', 'info');
-}
-
-/**
- * Client-Side CSV & JSON Exporter for Admin Reports
- */
-function exportData(reportType, format) {
-  let dataToExport = [];
-  let filename = `skillswap_${reportType}_${Date.now()}`;
-
-  if (reportType === 'users') {
-    dataToExport = AppState.users.map(u => ({
-      id: u.id,
-      name: u.name,
-      location: u.location,
-      rating: u.rating,
-      availability: u.availability,
-      skillsOffered: u.skillsOffered.join('; '),
-      skillsWanted: u.skillsWanted.join('; ')
-    }));
-  } else if (reportType === 'swaps') {
-    dataToExport = AppState.swaps.map(s => ({
-      swapId: s.id,
-      partner: s.partnerName,
-      status: s.status,
-      date: s.date,
-      type: s.type
-    }));
-  } else {
-    // Feedback & Review Logs
-    dataToExport = [
-      { swapId: 'swp_105', reviewer: 'Alex Rivera', reviewee: 'David Kim', stars: 5, comment: 'Phenomenal Excel coaching! Really helped with financial formulas.' },
-      { swapId: 'swp_104', reviewer: 'Marcus Vance', reviewee: 'Alex Rivera', stars: 5, comment: 'Super clear Python API examples. Great communication!' }
-    ];
-  }
-
-  let blob, mimeType, fileExt;
-  if (format === 'json') {
-    blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
-    fileExt = 'json';
-  } else {
-    // Generate CSV string
-    const headers = Object.keys(dataToExport[0] || {}).join(',');
-    const rows = dataToExport.map(row => 
-      Object.values(row).map(val => `"${String(val).replace(/"/g, '""')}"`).join(',')
-    );
-    const csvContent = [headers, ...rows].join('\n');
-    blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    fileExt = 'csv';
-  }
-
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${filename}.${fileExt}`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-
-  showToast(`Downloaded ${reportType} report as ${fileExt.toUpperCase()}!`, 'success');
+  updateNavbarUserSnippet();
+  showToast('Profile preferences saved!', 'success');
 }
 
 // ==========================================================================
-// 11. MODAL CONTROLLERS & FORM HANDLERS
+// 11. MODAL CONTROLLERS (+ POST SKILL & REPORT USER)
 // ==========================================================================
-function openModal(modalId) {
-  const modal = document.getElementById(modalId);
-  if (modal) modal.classList.add('active');
+function openModal(id) {
+  const m = document.getElementById(id);
+  if (m) m.classList.add('active');
 }
 
-function closeModal(modalId) {
-  const modal = document.getElementById(modalId);
-  if (modal) modal.classList.remove('active');
+function closeModal(id) {
+  const m = document.getElementById(id);
+  if (m) m.classList.remove('active');
 }
 
-// Close modal when clicking on backdrop
 document.addEventListener('click', (e) => {
   if (e.target.classList.contains('modal-overlay')) {
     e.target.classList.remove('active');
   }
 });
 
-/**
- * Open Swap Request Modal with target candidate preloaded
- */
+// Post Skill
+function openPostSkillModal() {
+  openModal('modalPostSkill');
+}
+
+function handlePostSkillSubmit(e) {
+  e.preventDefault();
+  const title = document.getElementById('newSkillTitle').value.trim();
+  const desc = document.getElementById('newSkillDesc').value.trim();
+
+  if (title) {
+    if (!AppState.currentUser.skillsOffered.includes(title)) {
+      AppState.currentUser.skillsOffered.push(title);
+    }
+    if (!AppState.currentUser.skillsOfferedDesc) AppState.currentUser.skillsOfferedDesc = {};
+    AppState.currentUser.skillsOfferedDesc[title] = desc;
+
+    saveStateToStorage();
+    closeModal('modalPostSkill');
+    document.getElementById('formPostSkill').reset();
+    showToast(`Posted skill listing: "${title}"!`, 'success');
+    renderExploreProfiles();
+  }
+}
+
+// Propose Swap Request
 function openSwapRequestModal(partnerId) {
   const partner = AppState.users.find(u => u.id === partnerId);
   if (!partner) return;
@@ -1464,21 +978,18 @@ function openSwapRequestModal(partnerId) {
   document.getElementById('swapModalPartnerName').textContent = partner.name;
   document.getElementById('swapModalPartnerLocation').textContent = `${partner.location} • Available ${partner.availability}`;
 
-  // Populate "Skill I want from them" (their offered skills)
   const wantSelect = document.getElementById('swapSkillIWant');
   wantSelect.innerHTML = partner.skillsOffered.map(s => `<option value="${s}">${s}</option>`).join('');
 
-  // Populate "Skill I will offer" (current user's offered skills)
   const offerSelect = document.getElementById('swapSkillIOffer');
   offerSelect.innerHTML = AppState.currentUser.skillsOffered.map(s => `<option value="${s}">${s}</option>`).join('');
 
-  // Pre-fill friendly message
-  document.getElementById('swapCustomMessage').value = `Hi ${partner.name}! I love your profile and would love to exchange weekly sessions. I can teach you ${AppState.currentUser.skillsOffered[0] || 'programming'} in return for your expertise!`;
+  document.getElementById('swapCustomMessage').value = `Hi ${partner.name}! I would love to exchange learning sessions. I can teach you ${AppState.currentUser.skillsOffered[0]} in return for your expertise!`;
 
   openModal('modalSwapRequest');
 }
 
-async function handleSendSwapSubmit(e) {
+function handleSendSwapSubmit(e) {
   e.preventDefault();
   const targetId = document.getElementById('swapTargetUserId').value;
   const skillWanted = document.getElementById('swapSkillIWant').value;
@@ -1505,12 +1016,10 @@ async function handleSendSwapSubmit(e) {
   AppState.swaps.unshift(newSwap);
   saveStateToStorage();
   closeModal('modalSwapRequest');
-  showToast(`Swap offer sent to ${partner.name}! You can track it under 'My Swaps'.`, 'success');
+  showToast(`Swap proposition sent to ${partner.name}!`, 'success');
 }
 
-/**
- * Open Rating & Review Modal
- */
+// Rating Modal
 function openRatingModal(swapId, partnerName) {
   document.getElementById('ratingSwapId').value = swapId;
   document.getElementById('modalRatingTitle').textContent = `Rate Exchange with ${partnerName}`;
@@ -1520,32 +1029,23 @@ function openRatingModal(swapId, partnerName) {
 
 function setStarRating(rating) {
   document.getElementById('selectedStarValue').value = rating;
-  const starButtons = document.querySelectorAll('#starRatingSelect .star-btn');
-  starButtons.forEach((btn, index) => {
-    btn.classList.toggle('active', index < rating);
+  document.querySelectorAll('#starRatingSelect .star-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', i < rating);
   });
 }
 
 function handleSubmitRating(e) {
   e.preventDefault();
   const swapId = document.getElementById('ratingSwapId').value;
-  const stars = document.getElementById('selectedStarValue').value;
-  const comment = document.getElementById('ratingComment').value.trim();
-
   const swap = AppState.swaps.find(s => s.id === swapId);
-  if (swap) {
-    swap.hasReviewed = true;
-  }
-
+  if (swap) swap.hasReviewed = true;
   saveStateToStorage();
   closeModal('modalRating');
   renderSwapsList();
-  showToast(`Thank you! Submitted ${stars}-star rating and review feedback.`, 'success');
+  showToast('Feedback review submitted! Thank you.', 'success');
 }
 
-/**
- * AI Profile Summary (RAG Feature 2)
- */
+// AI Profile Summary
 function triggerAiProfileSummary(userId) {
   const user = AppState.users.find(u => u.id === userId);
   if (!user) return;
@@ -1553,50 +1053,35 @@ function triggerAiProfileSummary(userId) {
   const contentArea = document.getElementById('aiSummaryContentArea');
   contentArea.innerHTML = `
     <div style="text-align: center; padding: 24px;">
-      <div class="ai-sparkle-dot" style="margin: 0 auto 12px auto;"></div>
-      <div style="font-weight: 700; color: var(--primary);">Synthesizing Profile with RAG Intelligence...</div>
-      <div style="font-size: 0.8rem; color: var(--text-muted);">Cross-referencing skills, availability, and past ratings</div>
+      <div class="ai-dot-indicator" style="position: static; margin: 0 auto 10px auto;"></div>
+      <div style="font-weight: 700; color: var(--primary);">Synthesizing RAG Compatibility Profile...</div>
     </div>
   `;
   openModal('modalAiSummary');
 
   setTimeout(() => {
-    // Calculate simulated compatibility match
-    const sharedGoals = user.skillsWanted.filter(w => AppState.currentUser.skillsOffered.some(o => o.toLowerCase().includes(w.toLowerCase())));
-    const compatibilityPercentage = sharedGoals.length > 0 ? 94 : 82;
-
     contentArea.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 20px;">
-        <img src="${user.avatar}" class="profile-avatar-img" style="width: 58px; height: 58px;" alt="${user.name}">
+      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
+        <img src="${user.avatar}" style="width: 54px; height: 54px; border-radius: 50%; object-fit: cover; border: 2px solid white;" alt="${user.name}">
         <div>
-          <h4 style="font-size: 1.2rem; font-weight: 800; color: var(--text-main);">${user.name}</h4>
-          <div style="font-size: 0.82rem; color: var(--text-muted);">${user.location} • Available ${user.availability}</div>
+          <h4 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">${user.name}</h4>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">${user.location} • Available ${user.availability}</span>
         </div>
       </div>
 
-      <div style="background: rgba(255, 255, 255, 0.75); border: 1px solid rgba(255, 255, 255, 0.9); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <span style="font-size: 0.84rem; font-weight: 700; color: var(--primary);">Compatibility Match Score</span>
-          <span class="badge badge-mint">${compatibilityPercentage}% Strong Fit</span>
+      <div style="background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.9); border-radius: var(--radius-md); padding: 14px; margin-bottom: 14px;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.84rem; font-weight: 700; color: var(--primary); margin-bottom: 6px;">
+          <span>Compatibility Match</span>
+          <span class="badge badge-mint">98% Reciprocal Overlap</span>
         </div>
         <div style="height: 6px; background: rgba(0,0,0,0.06); border-radius: 9999px; overflow: hidden;">
-          <div style="width: ${compatibilityPercentage}%; height: 100%; background: linear-gradient(90deg, var(--emerald) 0%, #a855f7 100%);"></div>
+          <div style="width: 98%; height: 100%; background: linear-gradient(90deg, var(--emerald) 0%, var(--primary) 100%);"></div>
         </div>
       </div>
 
-      <div style="margin-bottom: 16px;">
-        <h5 style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">🧠 AI RAG Executive Summary:</h5>
-        <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.5;">
-          ${user.name} is a high-reputation peer with an outstanding <strong>${user.rating}★ rating</strong> over ${user.reviewCount} completed swaps. Their strengths center on <em>${user.skillsOffered.join(', ')}</em>. They are looking to expand their knowledge in <em>${user.skillsWanted.join(', ')}</em>.
-        </p>
-      </div>
-
-      <div style="background: rgba(109, 59, 107, 0.08); border-left: 3px solid var(--primary); padding: 12px 14px; border-radius: var(--radius-sm); margin-bottom: 20px;">
-        <div style="font-size: 0.82rem; font-weight: 700; color: var(--primary); margin-bottom: 2px;">💡 Recommended Swap Structure:</div>
-        <div style="font-size: 0.8rem; color: var(--text-muted);">
-          Offer 45-minute alternating weekly Zoom sessions. You can mentor on <strong>${AppState.currentUser.skillsOffered[0]}</strong> while learning <strong>${user.skillsOffered[0]}</strong>.
-        </div>
-      </div>
+      <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
+        ${user.name} has maintained a <strong>${user.rating}★ rating</strong> over ${user.reviewCount} swaps. Their teaching expertise in <em>${user.skillsOffered.join(', ')}</em> aligns directly with your wanted skills.
+      </p>
 
       <div style="display: flex; justify-content: flex-end; gap: 10px;">
         <button type="button" class="btn btn-glass" onclick="closeModal('modalAiSummary')">Close</button>
@@ -1605,23 +1090,67 @@ function triggerAiProfileSummary(userId) {
         </button>
       </div>
     `;
-  }, 400);
+  }, 350);
+}
+
+// Report User / Content
+function openReportModal(userId) {
+  document.getElementById('reportTargetUserId').value = userId;
+  openModal('modalReport');
+}
+
+function handleReportSubmit(e) {
+  e.preventDefault();
+  const reason = document.getElementById('reportReasonSelect').value;
+  const targetId = document.getElementById('reportTargetUserId').value;
+  const targetUser = AppState.users.find(u => u.id === targetId) || { name: 'Reported User' };
+
+  // Save to moderation queue
+  const currentMod = JSON.parse(localStorage.getItem('skillswap_moderation')) || [];
+  currentMod.unshift({
+    id: 'mod_' + Date.now(),
+    targetUser: targetUser.name.toLowerCase().replace(/\s+/g, '_'),
+    userEmail: 'reported@skillswap.user',
+    content: `Reported by peer for: ${reason}`,
+    aiCategory: reason,
+    aiConfidence: '99.1%',
+    aiReason: 'Submitted by verified community member. Auto-flagged for administrative review.',
+    date: 'Just now'
+  });
+  localStorage.setItem('skillswap_moderation', JSON.stringify(currentMod));
+
+  closeModal('modalReport');
+  document.getElementById('formReportUser').reset();
+  showToast('Report submitted. Flagged for administrative and AI moderation.', 'info');
 }
 
 // ==========================================================================
-// 12. DOM BOOTSTRAPPER & INITIALIZATION
+// 12. INITIALIZATION
 // ==========================================================================
 document.addEventListener('DOMContentLoaded', () => {
-  // Check URL query parameters for direct view routing (e.g. ?view=admin)
-  const urlParams = new URLSearchParams(window.location.search);
-  const viewParam = urlParams.get('view');
-
-  if (viewParam && ['explore', 'swaps', 'profile', 'ai', 'admin'].includes(viewParam)) {
-    AppState.currentView = viewParam;
+  // Attach inline tag input enter listeners
+  const inputOffered = document.getElementById('inputOfferedTag');
+  if (inputOffered) {
+    inputOffered.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addSkillTag('offered', inputOffered.value);
+        inputOffered.value = '';
+      }
+    });
   }
 
-  // Synchronize UI
+  const inputWanted = document.getElementById('inputWantedTag');
+  if (inputWanted) {
+    inputWanted.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addSkillTag('wanted', inputWanted.value);
+        inputWanted.value = '';
+      }
+    });
+  }
+
   updateNavbarUserSnippet();
-  renderBroadcastBanner();
   navigateTo(AppState.currentView);
 });
