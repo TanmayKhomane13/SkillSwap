@@ -226,6 +226,9 @@ const AppState = {
   filterAvailability: 'all',
   filterRating: 0,
   activeSwapSubtab: 'incoming',
+  isAiDrawerOpen: false,
+  isMemberProfileOpen: false,
+  activeMemberProfileId: null,
   chatMessages: [
     {
       sender: 'ai',
@@ -270,17 +273,23 @@ function showToast(message, type = 'info') {
 // ==========================================================================
 // 4. FIX #1A: NAVBAR SCROLL EFFECT (FLOATING ROUNDED GLASS PILL)
 // ==========================================================================
+let isNavbarScrollTicking = false;
 function handleNavbarScroll() {
-  const navbar = document.querySelector('.navbar');
-  if (navbar) {
-    if (window.scrollY > 20) {
-      navbar.classList.add('scrolled');
-    } else {
-      navbar.classList.remove('scrolled');
-    }
+  if (!isNavbarScrollTicking) {
+    window.requestAnimationFrame(() => {
+      const navbar = document.querySelector('.navbar');
+      if (navbar) {
+        const isScrolled = window.scrollY > 20;
+        if (navbar.classList.contains('scrolled') !== isScrolled) {
+          navbar.classList.toggle('scrolled', isScrolled);
+        }
+      }
+      isNavbarScrollTicking = false;
+    });
+    isNavbarScrollTicking = true;
   }
 }
-window.addEventListener('scroll', handleNavbarScroll);
+window.addEventListener('scroll', handleNavbarScroll, { passive: true });
 window.addEventListener('DOMContentLoaded', handleNavbarScroll);
 
 function navigateTo(viewId) {
@@ -392,12 +401,36 @@ function updateDropdownActiveItem(dropdownId, selectedLabel) {
 }
 
 // ==========================================================================
-// 6. RIGHT-SIDE SLIDE-OUT AI COPILOT DRAWER
+// 6. RIGHT-HAND SIDE PANELS DOCK & DYNAMIC VERTICAL STACKING SYSTEM
 // ==========================================================================
+
+function updateRightPanelsLayout() {
+  const dock = document.getElementById('rightPanelsDock');
+  const overlay = document.getElementById('aiDrawerOverlay');
+  if (!dock) return;
+
+  const isAi = !!AppState.isAiDrawerOpen;
+  const isProfile = !!AppState.isMemberProfileOpen;
+
+  const classes = ['right-panels-dock'];
+  if (isAi && isProfile) {
+    classes.push('active', 'stacked');
+    if (overlay && window.innerWidth < 820) overlay.classList.add('active');
+  } else if (isAi && !isProfile) {
+    classes.push('active', 'ai-only');
+    if (overlay && window.innerWidth < 820) overlay.classList.add('active');
+  } else if (!isAi && isProfile) {
+    classes.push('active', 'profile-only');
+    if (overlay && window.innerWidth < 820) overlay.classList.add('active');
+  } else {
+    if (overlay) overlay.classList.remove('active');
+  }
+
+  dock.className = classes.join(' ');
+}
+
 function toggleAiDrawer() {
-  const drawer = document.getElementById('aiDrawer');
-  const isOpen = drawer.classList.contains('open');
-  if (isOpen) {
+  if (AppState.isAiDrawerOpen) {
     closeAiDrawer();
   } else {
     openAiDrawer();
@@ -405,14 +438,93 @@ function toggleAiDrawer() {
 }
 
 function openAiDrawer() {
-  document.getElementById('aiDrawer').classList.add('open');
-  document.getElementById('aiDrawerOverlay').classList.add('active');
+  AppState.isAiDrawerOpen = true;
   renderAiDrawerMessages();
+  updateRightPanelsLayout();
 }
 
 function closeAiDrawer() {
-  document.getElementById('aiDrawer').classList.remove('open');
-  document.getElementById('aiDrawerOverlay').classList.remove('active');
+  AppState.isAiDrawerOpen = false;
+  updateRightPanelsLayout();
+}
+
+function openPublicMemberProfile(userId) {
+  const user = AppState.users.find(u => u.id === userId);
+  if (!user) return;
+
+  AppState.activeMemberProfileId = userId;
+  AppState.isMemberProfileOpen = true;
+
+  const container = document.getElementById('memberProfileBody');
+  if (container) {
+    const mainTeachesTitle = user.primarySkill || user.skillsOffered[0];
+    const mainTeachesDesc = (user.skillsOfferedDesc && user.skillsOfferedDesc[mainTeachesTitle]) || user.skillDesc || 'Experienced mentor sharing practical real-world workflows.';
+
+    container.innerHTML = `
+      <div class="member-profile-top">
+        <img src="${user.avatar}" alt="${user.name}" class="member-profile-avatar">
+        <div class="member-profile-info">
+          <div class="member-profile-name-row">
+            <h3 class="member-profile-name">${user.name}</h3>
+            <span class="badge badge-amber" style="font-weight: 700;">★ ${user.rating}</span>
+          </div>
+          <div class="member-profile-badges">
+            <span class="badge badge-neutral">${user.location}</span>
+            <span class="badge badge-mint">${user.availability}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="member-profile-headline">
+        ${user.headline || (user.name + ' • Community Swapper')}
+      </div>
+
+      <div class="member-profile-bio">
+        ${user.bio || 'Passionate about barter education, peer mentoring, and exchanging knowledge.'}
+      </div>
+
+      <div class="member-skills-section">
+        <div class="member-skills-title">Teaches & Mentors</div>
+        <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${mainTeachesTitle}</div>
+        <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4;">${mainTeachesDesc}</p>
+        ${user.skillsOffered.length > 1 ? `
+          <div class="member-skills-pills" style="margin-top: 4px;">
+            ${user.skillsOffered.slice(1).map(s => `<span class="badge badge-mint">${s}</span>`).join('')}
+          </div>
+        ` : ''}
+      </div>
+
+      <div class="member-skills-section">
+        <div class="member-skills-wanted-title">Wants to Learn</div>
+        <div class="member-skills-pills">
+          ${user.skillsWanted.map(s => `<span class="badge badge-plum">${s}</span>`).join('')}
+        </div>
+      </div>
+
+      <div class="member-profile-actions">
+        <button type="button" class="btn btn-primary" style="flex: 1;" onclick="openSwapRequestModal('${user.id}')">
+          <span>Propose Swap</span>
+        </button>
+        <button type="button" class="btn btn-glass btn-sm" onclick="sendAiPrompt('Can you evaluate my swap match with ${user.name}?')" title="Ask AI about compatibility">
+          <span class="ai-dot-indicator" style="position: static; margin-right: 4px;"></span>
+          <span>Ask AI</span>
+        </button>
+      </div>
+    `;
+  }
+
+  updateRightPanelsLayout();
+}
+
+function closePublicMemberProfile() {
+  AppState.isMemberProfileOpen = false;
+  AppState.activeMemberProfileId = null;
+  updateRightPanelsLayout();
+}
+
+function closeAllRightPanels() {
+  closePublicMemberProfile();
+  closeAiDrawer();
 }
 
 function renderAiDrawerMessages() {
@@ -469,7 +581,10 @@ function generateAiCopilotResponse(query) {
               <div>
                 <strong>${u.name}</strong> (${u.location})
               </div>
-              <button type="button" class="btn btn-primary btn-sm" onclick="openSwapRequestModal('${u.id}'); closeAiDrawer();">Swap</button>
+              <div style="display: flex; gap: 6px;">
+                <button type="button" class="btn btn-glass btn-sm" onclick="openPublicMemberProfile('${u.id}')">Profile</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="openSwapRequestModal('${u.id}');">Swap</button>
+              </div>
             </div>
           `).join('')}
         </div>
@@ -488,7 +603,13 @@ function generateAiCopilotResponse(query) {
   if (q.includes('match') || q.includes('reciprocal')) {
     return {
       sender: 'ai',
-      text: `⚡ Your highest mutual match is <strong>Elena Rostova</strong> (98% Compatibility)! She wants to learn <em>Python Programming</em> and teaches <em>Figma UI/UX</em>.`
+      text: `⚡ Your highest mutual match is <strong>Elena Rostova</strong> (98% Compatibility)! She wants to learn <em>Python Programming</em> and teaches <em>Figma UI/UX</em>.`,
+      actionsHtml: `
+        <div style="margin-top: 8px; display: flex; gap: 8px;">
+          <button type="button" class="btn btn-glass btn-sm" onclick="openPublicMemberProfile('usr_2')">View Elena's Profile</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="openSwapRequestModal('usr_2');">Propose Swap</button>
+        </div>
+      `
     };
   }
 
@@ -589,7 +710,7 @@ function renderExploreProfiles() {
       <article class="glass-card profile-card-minimal" id="card-${user.id}">
         <div>
           <!-- Top Row: Avatar + Name + City + Rating Pill -->
-          <div class="card-top-row">
+          <div class="card-top-row" onclick="openPublicMemberProfile('${user.id}')" style="cursor: pointer;" title="View ${user.name}'s Profile">
             <img src="${user.avatar}" alt="${user.name}" class="card-avatar">
             <div class="card-user-info">
               <div class="card-name-row">
@@ -620,6 +741,9 @@ function renderExploreProfiles() {
         <div class="card-footer-clean">
           <button type="button" class="btn btn-primary btn-propose-swap" onclick="openSwapRequestModal('${user.id}')">
             <span>Propose Skill Swap</span>
+          </button>
+          <button type="button" class="btn-card-action" title="View Member Profile" onclick="openPublicMemberProfile('${user.id}')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
           </button>
           <button type="button" class="btn-card-action" title="AI Insight Summary" onclick="triggerAiProfileSummary('${user.id}')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -666,7 +790,7 @@ function renderMatchesView() {
     <article class="glass-card match-card">
       <span class="match-score-badge-large">✨ ${u.compatibilityScore}% Match</span>
       
-      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; cursor: pointer;" onclick="openPublicMemberProfile('${u.id}')" title="View ${u.name}'s Profile">
         <img src="${u.avatar}" class="card-avatar" alt="${u.name}">
         <div>
           <h4 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">${u.name}</h4>
@@ -681,9 +805,15 @@ function renderMatchesView() {
         <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-main);">${u.skillsWanted.join(', ')}</div>
       </div>
 
-      <button type="button" class="btn btn-primary" style="width: 100%;" onclick="openSwapRequestModal('${u.id}')">
-        <span>Initiate Reciprocal Swap</span>
-      </button>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn btn-glass" style="flex: 0 0 auto;" onclick="openPublicMemberProfile('${u.id}')" title="View Public Member Profile">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <span style="margin-left: 4px;">Profile</span>
+        </button>
+        <button type="button" class="btn btn-primary" style="flex: 1;" onclick="openSwapRequestModal('${u.id}')">
+          <span>Initiate Swap</span>
+        </button>
+      </div>
     </article>
   `).join('');
 }

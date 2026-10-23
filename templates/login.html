@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SkillSwap | Login & Access Portal</title>
-  <meta name="description" content="Sign in or register for SkillSwap - The peer-to-peer barter skill exchange platform with soft glassmorphic UI.">
+  <meta name="description"
+    content="Sign in or register for SkillSwap - The peer-to-peer barter skill exchange platform with soft glassmorphic UI.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="../static/css/style.css">
+  <link rel="stylesheet" href="../static/css/style.css?v=2.5">
 </head>
+
 <body class="auth-page-body">
 
   <!-- Soft Pastel Mesh Background Blobs -->
@@ -24,11 +27,12 @@
 
   <!-- Centered Glassmorphic Auth Card -->
   <main class="glass-elevated auth-card-container">
-    
+
     <!-- Brand Header -->
     <header class="auth-brand-header">
       <div class="auth-brand-logo">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
           <path d="M16 3h5v5"></path>
           <path d="M4 20L21 3"></path>
           <path d="M21 16v5h-5"></path>
@@ -41,15 +45,19 @@
 
     <!-- Role Toggle Switch at the top: User Login | Admin Login -->
     <div class="auth-role-switch" role="tablist" aria-label="Authentication Role">
-      <button type="button" class="role-switch-btn active" id="btnRoleUser" role="tab" aria-selected="true" onclick="switchAuthRole('user')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <button type="button" class="role-switch-btn active" id="btnRoleUser" role="tab" aria-selected="true"
+        onclick="switchAuthRole('user')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
         User Login
       </button>
-      <button type="button" class="role-switch-btn" id="btnRoleAdmin" role="tab" aria-selected="false" onclick="switchAuthRole('admin')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <button type="button" class="role-switch-btn" id="btnRoleAdmin" role="tab" aria-selected="false"
+        onclick="switchAuthRole('admin')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
         </svg>
         Admin Login
@@ -60,17 +68,23 @@
     <section id="userAuthSection">
       <!-- Sub-tabs: Login vs Register -->
       <div class="auth-mode-subtabs" role="tablist">
-        <button type="button" class="auth-mode-btn active" id="tabUserLogin" onclick="switchUserAuthMode('login')">Sign In</button>
-        <button type="button" class="auth-mode-btn" id="tabUserRegister" onclick="switchUserAuthMode('register')">Create Account</button>
+        <button type="button" class="auth-mode-btn active" id="tabUserLogin" onclick="switchUserAuthMode('login')">Sign
+          In</button>
+        <button type="button" class="auth-mode-btn" id="tabUserRegister" onclick="switchUserAuthMode('register')">Create
+          Account</button>
       </div>
 
       <!-- Prominent Continue with Google OAuth Button -->
       <button type="button" class="btn-google" id="googleOAuthBtn" onclick="handleGoogleOAuth()">
         <svg class="google-icon-svg" viewBox="0 0 24 24">
-          <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
-          <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
-          <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.2s.7 5.5 1.9 7.9l3.7-2.9c-.3-.8-.5-1.6-.5-2.4z"/>
-          <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2-6.4-4.8L1.9 16.9C3.7 20.6 7.5 23.5 12 23.5z"/>
+          <path fill="#EA4335"
+            d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z" />
+          <path fill="#4285F4"
+            d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z" />
+          <path fill="#FBBC05"
+            d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.2s.7 5.5 1.9 7.9l3.7-2.9c-.3-.8-.5-1.6-.5-2.4z" />
+          <path fill="#34A853"
+            d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2-6.4-4.8L1.9 16.9C3.7 20.6 7.5 23.5 12 23.5z" />
         </svg>
         <span>Continue with Google</span>
       </button>
@@ -81,15 +95,18 @@
       <form id="userLoginForm" onsubmit="handleUserLogin(event)">
         <div class="form-group">
           <label class="form-label" for="userEmail">Email Address</label>
-          <input type="email" id="userEmail" name="email" class="glass-input" placeholder="name@example.com" required autocomplete="username">
+          <input type="email" id="userEmail" name="email" class="glass-input" placeholder="name@example.com" required
+            autocomplete="username">
         </div>
         <div class="form-group">
           <label class="form-label" for="userPassword">Password</label>
-          <input type="password" id="userPassword" name="password" class="glass-input" placeholder="Enter your password" required autocomplete="current-password">
+          <input type="password" id="userPassword" name="password" class="glass-input" placeholder="Enter your password"
+            required autocomplete="current-password">
         </div>
         <button type="submit" class="btn btn-primary" style="width: 100%; height: 48px; margin-top: 8px;">
           <span>Sign In to SkillSwap</span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <line x1="5" y1="12" x2="19" y2="12"></line>
             <polyline points="12 5 19 12 12 19"></polyline>
           </svg>
@@ -100,23 +117,28 @@
       <form id="userRegisterForm" style="display: none;" onsubmit="handleUserRegister(event)">
         <div class="form-group">
           <label class="form-label" for="regName">Full Name</label>
-          <input type="text" id="regName" name="name" class="glass-input" placeholder="Elena Rostova" required autocomplete="name">
+          <input type="text" id="regName" name="name" class="glass-input" placeholder="Elena Rostova" required
+            autocomplete="name">
         </div>
         <div class="form-group">
           <label class="form-label" for="regEmail">Email Address</label>
-          <input type="email" id="regEmail" name="email" class="glass-input" placeholder="name@example.com" required autocomplete="email">
+          <input type="email" id="regEmail" name="email" class="glass-input" placeholder="name@example.com" required
+            autocomplete="email">
         </div>
         <div class="form-group">
           <label class="form-label" for="regPassword">Password</label>
-          <input type="password" id="regPassword" name="new-password" class="glass-input" placeholder="Create a password" required minlength="6" autocomplete="new-password">
+          <input type="password" id="regPassword" name="new-password" class="glass-input"
+            placeholder="Create a password" required minlength="6" autocomplete="new-password">
         </div>
         <div class="form-group">
           <label class="form-label" for="regSkillsOffered">Top Skill You Can Teach</label>
-          <input type="text" id="regSkillsOffered" name="skills_offered" class="glass-input" placeholder="e.g. Python, Graphic Design, Spanish">
+          <input type="text" id="regSkillsOffered" name="skills_offered" class="glass-input"
+            placeholder="e.g. Python, Graphic Design, Spanish">
         </div>
         <button type="submit" class="btn btn-emerald" style="width: 100%; height: 48px; margin-top: 8px;">
           <span>Create My Account</span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
         </button>
@@ -125,9 +147,12 @@
 
     <!-- ADMIN AUTHENTICATION SECTION (Initially Hidden) -->
     <section id="adminAuthSection" style="display: none;">
-      <div style="background: rgba(109, 59, 107, 0.08); border: 1px solid var(--primary-border); padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; gap: 8px; color: var(--primary); font-weight: 700; font-size: 0.88rem; margin-bottom: 2px;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <div
+        style="background: rgba(109, 59, 107, 0.08); border: 1px solid var(--primary-border); padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 20px;">
+        <div
+          style="display: flex; align-items: center; gap: 8px; color: var(--primary); font-weight: 700; font-size: 0.88rem; margin-bottom: 2px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
           </svg>
@@ -141,15 +166,18 @@
       <form id="adminLoginForm" onsubmit="handleAdminLogin(event)">
         <div class="form-group">
           <label class="form-label" for="adminEmail">Admin Security ID / Email</label>
-          <input type="email" id="adminEmail" name="admin_email" class="glass-input" placeholder="admin@skillswap.internal" required autocomplete="username">
+          <input type="email" id="adminEmail" name="admin_email" class="glass-input"
+            placeholder="admin@skillswap.internal" required autocomplete="username">
         </div>
         <div class="form-group">
           <label class="form-label" for="adminPassword">Security Key / Password</label>
-          <input type="password" id="adminPassword" name="admin_password" class="glass-input" placeholder="Enter admin password" required autocomplete="current-password">
+          <input type="password" id="adminPassword" name="admin_password" class="glass-input"
+            placeholder="Enter admin password" required autocomplete="current-password">
         </div>
         <button type="submit" class="btn btn-primary" style="width: 100%; height: 48px; margin-top: 8px;">
           <span>Authorize Admin Access</span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
           </svg>
         </button>
@@ -174,8 +202,8 @@
       toast.className = `toast toast-${type}`;
       toast.innerHTML = `
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          ${type === 'success' ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>' : 
-            type === 'error' ? '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>' : 
+          ${type === 'success' ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>' :
+          type === 'error' ? '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>' :
             '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>'}
         </svg>
         <span>${message}</span>
@@ -321,7 +349,7 @@
     async function handleAdminLogin(e) {
       e.preventDefault();
       const email = document.getElementById('adminEmail').value.trim() || 'admin@skillswap.internal';
-      
+
       showToast('Verifying Administrator credentials...', 'info');
 
       setTimeout(() => {
@@ -342,4 +370,5 @@
     }
   </script>
 </body>
+
 </html>

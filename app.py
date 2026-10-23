@@ -24,7 +24,7 @@ MongoDB Collections Schema:
 import os
 from datetime import datetime
 from functools import wraps
-from flask import Flask, request, jsonify, redirect, session, url_for
+from flask import Flask, request, jsonify, redirect, session, url_for, render_template
 from flask_cors import CORS
 # pyrefly: ignore[missing-import]
 from pymongo import MongoClient
@@ -33,7 +33,63 @@ from bson import ObjectId
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "skillswap-insecure-secret-key-change-in-prod")
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 CORS(app, supports_credentials=True)
+
+@app.after_request
+def add_no_cache_headers(response):
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    return response
+
+# ---------------------------------------------------------------------------
+# Frontend Page Routes (HTML Templates)
+# ---------------------------------------------------------------------------
+@app.route("/")
+@app.route("/index")
+@app.route("/index.html")
+def home():
+    """Serves the main User Dashboard view"""
+    return render_template("index.html")
+
+@app.route("/login")
+@app.route("/login.html")
+def login():
+    """Serves the Login & Access Portal view"""
+    return render_template("login.html")
+
+@app.route("/admin")
+@app.route("/admin.html")
+def admin():
+    """Serves the Admin Moderation Dashboard view"""
+    return render_template("admin.html")
+
+# Static fallback routes ensuring zero 404 errors regardless of path syntax
+@app.route("/static/style.css")
+def serve_root_style():
+    if os.path.exists(os.path.join(app.static_folder, "style.css")):
+        return app.send_static_file("style.css")
+    return app.send_static_file("css/style.css")
+
+@app.route("/static/css/style.css")
+def serve_css_style():
+    if os.path.exists(os.path.join(app.static_folder, "css", "style.css")):
+        return app.send_static_file("css/style.css")
+    return app.send_static_file("style.css")
+
+@app.route("/static/script.js")
+def serve_root_script():
+    if os.path.exists(os.path.join(app.static_folder, "script.js")):
+        return app.send_static_file("script.js")
+    return app.send_static_file("js/script.js")
+
+@app.route("/static/js/script.js")
+def serve_js_script():
+    if os.path.exists(os.path.join(app.static_folder, "js", "script.js")):
+        return app.send_static_file("js/script.js")
+    return app.send_static_file("script.js")
 
 # ---------------------------------------------------------------------------
 # MongoDB Connection
@@ -100,7 +156,7 @@ def google_auth_callback():
 
     # Set user session
     session["user_id"] = str(user["_id"])
-    return redirect("http://localhost:8080/index.html")
+    return redirect(url_for("home"))
 
 # ---------------------------------------------------------------------------
 # Authentication APIs

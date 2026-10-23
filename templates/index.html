@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SkillSwap | Peer-to-Peer Skill Exchange Platform</title>
-  <meta name="description" content="A modern glassmorphic skill swapping platform. Trade skills, learn from peers, and connect with zero monetary barrier.">
+  <meta name="description"
+    content="A modern glassmorphic skill swapping platform. Trade skills, learn from peers, and connect with zero monetary barrier.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="../static/css/style.css">
+  <link rel="stylesheet" href="../static/css/style.css?v=2.5">
 </head>
+
 <body>
 
   <!-- Floating Mesh Gradient Background Blobs -->
@@ -27,11 +30,12 @@
        ========================================================================== -->
   <header class="navbar-container" id="mainNavbar">
     <nav class="navbar" aria-label="Main Navigation">
-      
+
       <!-- Brand Logo (No cluttered subtitle) -->
       <a href="#explore" class="nav-brand" onclick="navigateTo('explore'); return false;">
         <div class="brand-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M16 3h5v5"></path>
             <path d="M4 20L21 3"></path>
             <path d="M21 16v5h-5"></path>
@@ -45,21 +49,26 @@
       <!-- FIX #2: Unified Frosted-Glass Pill Container: Explore | Matches | Requests -->
       <div class="nav-pills-container" role="tablist">
         <button type="button" class="nav-pill-btn active" id="navBtn-explore" onclick="navigateTo('explore')">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
           <span>Explore</span>
         </button>
         <button type="button" class="nav-pill-btn" id="navBtn-matches" onclick="navigateTo('matches')">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polygon
+              points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+            </polygon>
           </svg>
           <span>Matches</span>
           <span class="badge badge-mint" style="font-size: 0.65rem; padding: 1px 6px;">AI</span>
         </button>
         <button type="button" class="nav-pill-btn" id="navBtn-swaps" onclick="navigateTo('swaps')">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"></path>
           </svg>
           <span>Requests</span>
@@ -71,21 +80,28 @@
       <div class="nav-actions">
         <!-- Post Skill Button -->
         <button type="button" class="btn btn-primary btn-sm" onclick="openPostSkillModal()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
           <span>Post Skill</span>
         </button>
 
         <!-- FIX #4: Sleek Circular AI Copilot Drawer Toggle Button -->
-        <button type="button" class="btn-ai-toggle" id="btnAiToggle" onclick="toggleAiDrawer()" title="Open AI Copilot" aria-label="Open AI Copilot">
+        <button type="button" class="btn-ai-toggle" id="btnAiToggle" onclick="toggleAiDrawer()" title="Open AI Copilot"
+          aria-label="Open AI Copilot">
           <span class="ai-dot-indicator"></span>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            <polygon
+              points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+            </polygon>
           </svg>
         </button>
 
         <!-- User Avatar Pill (Opens profile when clicked or via dropdown) -->
         <div class="user-menu-pill" id="userMenuPill" onclick="toggleUserDropdown(event)">
-          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80" alt="Current User" class="user-avatar-sm" id="navUserAvatar">
+          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
+            alt="Current User" class="user-avatar-sm" id="navUserAvatar">
           <span class="user-name-snippet" id="navUserName">Alex Rivera</span>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="6 9 12 15 18 9"></polyline>
@@ -117,14 +133,20 @@
   </header>
 
   <!-- Platform-wide broadcast banner -->
-  <div class="broadcast-banner-container" id="broadcastContainer" style="display: none; max-width: 1280px; margin: 12px auto 0 auto; padding: 0 24px;">
-    <div class="glass-elevated" id="broadcastBanner" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 18px; border-radius: var(--radius-md); border-left: 4px solid var(--primary);">
+  <div class="broadcast-banner-container" id="broadcastContainer"
+    style="display: none; max-width: 1280px; margin: 12px auto 0 auto; padding: 0 24px;">
+    <div class="glass-elevated" id="broadcastBanner"
+      style="display: flex; align-items: center; justify-content: space-between; padding: 10px 18px; border-radius: var(--radius-md); border-left: 4px solid var(--primary);">
       <div style="display: flex; align-items: center; gap: 10px;">
         <span class="badge badge-plum" id="broadcastTypeTag">Announcement</span>
         <span id="broadcastMessageText" style="font-size: 0.88rem; font-weight: 500;">Welcome to SkillSwap!</span>
       </div>
-      <button type="button" class="broadcast-close" onclick="dismissBroadcast()" aria-label="Dismiss banner" style="background: none; border: none; cursor: pointer; color: var(--text-muted);">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <button type="button" class="broadcast-close" onclick="dismissBroadcast()" aria-label="Dismiss banner"
+        style="background: none; border: none; cursor: pointer; color: var(--text-muted);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
       </button>
     </div>
   </div>
@@ -138,7 +160,7 @@
          VIEW 1: SEARCH & DISCOVERY (EXPLORE) - MINIMAL, AIRY, UNCLUTTERED
          ---------------------------------------------------------------------- -->
     <section class="view-section active" id="view-explore">
-      
+
       <!-- FIX #7: Minimal Hero (No long paragraph) -> Straight into search -->
       <div class="hero-minimal-bar">
         <div class="hero-minimal-header">
@@ -148,12 +170,15 @@
         <!-- Search Controls Row with FIX #5 Custom Glass Dropdowns -->
         <div class="search-controls-row">
           <div class="search-input-wrapper">
-            <svg class="search-icon-left" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg class="search-icon-left" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <input type="text" id="searchInput" class="glass-input search-input-field" placeholder="Search by skill (e.g. Python, Figma, Spanish, Excel)..." oninput="handleSearchInput()">
-            <button type="button" id="searchClearBtn" class="search-clear-btn" onclick="clearSearch()" aria-label="Clear Search">
+            <input type="text" id="searchInput" class="glass-input search-input-field"
+              placeholder="Search by skill (e.g. Python, Figma, Spanish, Excel)..." oninput="handleSearchInput()">
+            <button type="button" id="searchClearBtn" class="search-clear-btn" onclick="clearSearch()"
+              aria-label="Clear Search">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -165,20 +190,26 @@
           <div class="custom-dropdown" id="dropdownAvailability">
             <button type="button" class="custom-dropdown-btn" onclick="toggleDropdown('dropdownAvailability')">
               <span id="selectedAvailabilityLabel">Any Availability</span>
-              <svg class="custom-dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              <svg class="custom-dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
             </button>
             <div class="custom-dropdown-panel">
-              <div class="custom-dropdown-item selected" onclick="selectDropdownOption('availability', 'all', 'Any Availability')">
+              <div class="custom-dropdown-item selected"
+                onclick="selectDropdownOption('availability', 'all', 'Any Availability')">
                 <span>Any Availability</span>
                 <span class="check-icon">✓</span>
               </div>
               <div class="custom-dropdown-item" onclick="selectDropdownOption('availability', 'Weekends', 'Weekends')">
                 <span>Weekends</span>
               </div>
-              <div class="custom-dropdown-item" onclick="selectDropdownOption('availability', 'Weekday Evenings', 'Weekday Evenings')">
+              <div class="custom-dropdown-item"
+                onclick="selectDropdownOption('availability', 'Weekday Evenings', 'Weekday Evenings')">
                 <span>Weekday Evenings</span>
               </div>
-              <div class="custom-dropdown-item" onclick="selectDropdownOption('availability', 'Custom Availability', 'Flexible / Custom')">
+              <div class="custom-dropdown-item"
+                onclick="selectDropdownOption('availability', 'Custom Availability', 'Flexible / Custom')">
                 <span>Flexible / Custom</span>
               </div>
             </div>
@@ -188,7 +219,10 @@
           <div class="custom-dropdown" id="dropdownRating">
             <button type="button" class="custom-dropdown-btn" onclick="toggleDropdown('dropdownRating')">
               <span id="selectedRatingLabel">Any Rating</span>
-              <svg class="custom-dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              <svg class="custom-dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
             </button>
             <div class="custom-dropdown-panel">
               <div class="custom-dropdown-item selected" onclick="selectDropdownOption('rating', 0, 'Any Rating')">
@@ -210,13 +244,16 @@
 
         <!-- Quick Filter Category Chips -->
         <div class="category-chips-row" id="categoryChips">
-          <button type="button" class="category-chip active" onclick="setCategoryFilter('all', this)">All Skills</button>
+          <button type="button" class="category-chip active" onclick="setCategoryFilter('all', this)">All
+            Skills</button>
           <button type="button" class="category-chip" onclick="setCategoryFilter('Python', this)">Python & Tech</button>
           <button type="button" class="category-chip" onclick="setCategoryFilter('Figma', this)">UI/UX & Design</button>
           <button type="button" class="category-chip" onclick="setCategoryFilter('Spanish', this)">Languages</button>
-          <button type="button" class="category-chip" onclick="setCategoryFilter('Photography', this)">Photography</button>
+          <button type="button" class="category-chip"
+            onclick="setCategoryFilter('Photography', this)">Photography</button>
           <button type="button" class="category-chip" onclick="setCategoryFilter('Music', this)">Music & Audio</button>
-          <button type="button" class="category-chip" onclick="setCategoryFilter('Marketing', this)">Digital Marketing</button>
+          <button type="button" class="category-chip" onclick="setCategoryFilter('Marketing', this)">Digital
+            Marketing</button>
           <button type="button" class="category-chip" onclick="setCategoryFilter('Excel', this)">Excel & Data</button>
         </div>
       </div>
@@ -250,13 +287,15 @@
          ---------------------------------------------------------------------- -->
     <section class="view-section" id="view-swaps">
       <div class="glass-card swaps-view-card">
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+
+        <div
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
           <div>
             <h2 style="font-family: var(--font-heading); font-size: 1.5rem; font-weight: 800; color: var(--text-main);">
               Swap Requests Hub
             </h2>
-            <p style="color: var(--text-muted); font-size: 0.88rem;">Manage incoming proposals, pending outgoing requests, and active learning sessions.</p>
+            <p style="color: var(--text-muted); font-size: 0.88rem;">Manage incoming proposals, pending outgoing
+              requests, and active learning sessions.</p>
           </div>
           <button type="button" class="btn btn-glass btn-sm" onclick="navigateTo('explore')">
             <span>Explore Swappers</span>
@@ -265,7 +304,8 @@
 
         <!-- Subtabs -->
         <div class="swaps-subtabs" role="tablist">
-          <button type="button" class="swap-subtab-btn active" id="subtab-incoming" onclick="switchSwapSubtab('incoming')">
+          <button type="button" class="swap-subtab-btn active" id="subtab-incoming"
+            onclick="switchSwapSubtab('incoming')">
             <span>Incoming Offers</span>
             <span class="badge badge-plum" id="subtabIncomingCount">2</span>
           </button>
@@ -291,11 +331,12 @@
          ---------------------------------------------------------------------- -->
     <section class="view-section" id="view-profile">
       <div class="profile-editor-layout">
-        
+
         <!-- Sidebar Summary Card -->
         <div class="glass-card profile-sidebar-card">
           <div class="avatar-upload-wrapper">
-            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80" alt="Avatar Preview" class="avatar-preview-img" id="sidebarAvatarPreview">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
+              alt="Avatar Preview" class="avatar-preview-img" id="sidebarAvatarPreview">
             <label class="avatar-upload-btn" title="Change Avatar URL" onclick="promptAvatarUrl()">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
@@ -304,8 +345,10 @@
             </label>
           </div>
 
-          <h3 style="font-family: var(--font-heading); font-size: 1.35rem; font-weight: 700; margin-bottom: 2px;" id="sidebarName">Alex Rivera</h3>
-          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;" id="sidebarEmail">alex.rivera@example.com</p>
+          <h3 style="font-family: var(--font-heading); font-size: 1.35rem; font-weight: 700; margin-bottom: 2px;"
+            id="sidebarName">Alex Rivera</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;" id="sidebarEmail">
+            alex.rivera@example.com</p>
 
           <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 16px;">
             <span class="badge badge-amber" id="sidebarRating">★ 4.9 Rating</span>
@@ -315,7 +358,8 @@
           <!-- Profile Visibility Switch -->
           <div class="visibility-card">
             <div class="visibility-header">
-              <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+              <span
+                style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                   <circle cx="12" cy="12" r="3"></circle>
@@ -335,13 +379,15 @@
 
         <!-- Main Edit Form Card -->
         <div class="glass-card profile-form-card">
-          <h2 style="font-family: var(--font-heading); font-size: 1.4rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">
+          <h2
+            style="font-family: var(--font-heading); font-size: 1.4rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">
             Profile & Skill Preferences
           </h2>
-          <p style="font-size: 0.86rem; color: var(--text-muted); margin-bottom: 24px;">Configure what you teach and learn for optimal reciprocal matching.</p>
+          <p style="font-size: 0.86rem; color: var(--text-muted); margin-bottom: 24px;">Configure what you teach and
+            learn for optimal reciprocal matching.</p>
 
           <form id="profileEditForm" onsubmit="saveUserProfile(event)">
-            
+
             <div class="form-grid-2">
               <div class="form-group">
                 <label class="form-label" for="profileFullName">Full Name</label>
@@ -356,7 +402,8 @@
 
             <div class="form-group">
               <label class="form-label" for="profileBio">Bio / Headline</label>
-              <textarea id="profileBio" class="glass-textarea" rows="2" placeholder="Brief intro...">Senior Python & Backend Developer with 5+ years building APIs and data pipelines. Passionate about learning UI design and ceramics!</textarea>
+              <textarea id="profileBio" class="glass-textarea" rows="2"
+                placeholder="Brief intro...">Senior Python & Backend Developer with 5+ years building APIs and data pipelines. Passionate about learning UI design and ceramics!</textarea>
             </div>
 
             <!-- Availability Selector -->
@@ -364,15 +411,18 @@
               <label class="form-label">Availability Schedule</label>
               <div class="availability-pills-group">
                 <label>
-                  <input type="checkbox" class="availability-pill-checkbox" name="availability" value="Weekends" checked>
+                  <input type="checkbox" class="availability-pill-checkbox" name="availability" value="Weekends"
+                    checked>
                   <span class="availability-pill-label">Weekends</span>
                 </label>
                 <label>
-                  <input type="checkbox" class="availability-pill-checkbox" name="availability" value="Weekday Evenings" checked>
+                  <input type="checkbox" class="availability-pill-checkbox" name="availability" value="Weekday Evenings"
+                    checked>
                   <span class="availability-pill-label">Weekday Evenings</span>
                 </label>
                 <label>
-                  <input type="checkbox" class="availability-pill-checkbox" name="availability" value="Custom Availability">
+                  <input type="checkbox" class="availability-pill-checkbox" name="availability"
+                    value="Custom Availability">
                   <span class="availability-pill-label">Flexible / Custom</span>
                 </label>
               </div>
@@ -381,28 +431,37 @@
             <!-- Skills Offered Tag Manager -->
             <div class="skill-manager-box">
               <div class="skill-manager-header">
-                <span style="font-size: 0.9rem; font-weight: 700; color: var(--emerald-dark); display: flex; align-items: center; gap: 6px;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span
+                  style="font-size: 0.9rem; font-weight: 700; color: var(--emerald-dark); display: flex; align-items: center; gap: 6px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
                   Skills Offered (Teaches)
                 </span>
                 <span class="badge badge-mint" id="offeredCount">3 Skills</span>
               </div>
               <div class="skill-tags-editor" id="offeredTagsContainer">
-                <input type="text" id="inputOfferedTag" class="tag-input-inline" placeholder="+ Type skill & press Enter">
+                <input type="text" id="inputOfferedTag" class="tag-input-inline"
+                  placeholder="+ Type skill & press Enter">
               </div>
             </div>
 
             <!-- Skills Wanted Tag Manager -->
             <div class="skill-manager-box">
               <div class="skill-manager-header">
-                <span style="font-size: 0.9rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 6px;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span
+                  style="font-size: 0.9rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 6px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
                   Skills Wanted (Learns)
                 </span>
                 <span class="badge badge-plum" id="wantedCount">2 Skills</span>
               </div>
               <div class="skill-tags-editor" id="wantedTagsContainer">
-                <input type="text" id="inputWantedTag" class="tag-input-inline" placeholder="+ Type skill & press Enter">
+                <input type="text" id="inputWantedTag" class="tag-input-inline"
+                  placeholder="+ Type skill & press Enter">
               </div>
             </div>
 
@@ -421,45 +480,84 @@
   </main>
 
   <!-- ==========================================================================
-       FIX #4: RIGHT-SIDE SLIDE-OUT AI COPILOT DRAWER
+       RIGHT-HAND SIDE PANELS DOCK (AI ASSISTANT & PUBLIC MEMBER PROFILE)
        ========================================================================== -->
-  <div class="ai-drawer-overlay" id="aiDrawerOverlay" onclick="closeAiDrawer()"></div>
-  <aside class="ai-drawer" id="aiDrawer" aria-label="AI Assistant Copilot">
-    <div class="ai-drawer-header">
-      <div class="ai-drawer-title">
-        <div class="ai-dot-indicator" style="position: static; display: inline-block;"></div>
-        <span>SkillSwap AI Copilot</span>
-      </div>
-      <button type="button" class="ai-drawer-close" onclick="closeAiDrawer()" aria-label="Close AI Drawer">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-      </button>
-    </div>
+  <div class="ai-drawer-overlay" id="aiDrawerOverlay" onclick="closeAllRightPanels()"></div>
+  <aside class="right-panels-dock" id="rightPanelsDock" aria-label="Right Side Utilities">
 
-    <div class="ai-drawer-body" id="aiDrawerMessages">
-      <!-- Chat bubbles inserted dynamically -->
-    </div>
-
-    <div class="ai-drawer-footer">
-      <!-- Quick Prompt Suggestions -->
-      <div class="ai-prompt-pills-row">
-        <button type="button" class="ai-drawer-prompt-btn" onclick="sendAiPrompt('Find someone who can teach Figma on weekends')">
-          🎨 "Find someone who teaches Figma on weekends"
-        </button>
-        <button type="button" class="ai-drawer-prompt-btn" onclick="sendAiPrompt('Show all my pending swap requests')">
-          🔄 "Summarize my pending swap requests"
-        </button>
-        <button type="button" class="ai-drawer-prompt-btn" onclick="sendAiPrompt('Who is my highest compatibility dual-swap match?')">
-          ⚡ "Find best reciprocal match for me"
+    <!-- Top Component: Public Member Profile Card -->
+    <div class="dock-panel member-profile-panel" id="memberProfilePanel">
+      <div class="panel-header">
+        <div class="panel-header-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span>Member Profile</span>
+        </div>
+        <button type="button" class="panel-close-btn" onclick="closePublicMemberProfile()"
+          aria-label="Close Member Profile">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
-
-      <form class="ai-drawer-input-row" style="margin-top: 10px;" onsubmit="handleAiChatSubmit(event)">
-        <input type="text" id="aiChatInput" class="glass-input ai-drawer-input" placeholder="Ask AI to find swappers or automate..." autocomplete="off">
-        <button type="submit" class="btn btn-primary" style="height: 44px; width: 44px; border-radius: 50%; padding: 0;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-        </button>
-      </form>
+      <div class="member-profile-body" id="memberProfileBody">
+        <!-- Injected dynamically by openPublicMemberProfile(userId) -->
+      </div>
     </div>
+
+    <!-- Bottom Component: AI Assistant Sidebar Drawer -->
+    <div class="dock-panel ai-drawer-panel" id="aiDrawer">
+      <div class="ai-drawer-header">
+        <div class="ai-drawer-title">
+          <div class="ai-dot-indicator" style="position: static; display: inline-block;"></div>
+          <span>SkillSwap AI Copilot</span>
+        </div>
+        <button type="button" class="ai-drawer-close" onclick="closeAiDrawer()" aria-label="Close AI Drawer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="ai-drawer-body" id="aiDrawerMessages">
+        <!-- Chat bubbles inserted dynamically -->
+      </div>
+
+      <div class="ai-drawer-footer">
+        <!-- Quick Prompt Suggestions -->
+        <div class="ai-prompt-pills-row">
+          <button type="button" class="ai-drawer-prompt-btn"
+            onclick="sendAiPrompt('Find someone who can teach Figma on weekends')">
+            🎨 "Find someone who teaches Figma on weekends"
+          </button>
+          <button type="button" class="ai-drawer-prompt-btn"
+            onclick="sendAiPrompt('Show all my pending swap requests')">
+            🔄 "Summarize my pending swap requests"
+          </button>
+          <button type="button" class="ai-drawer-prompt-btn"
+            onclick="sendAiPrompt('Who is my highest compatibility dual-swap match?')">
+            ⚡ "Find best reciprocal match for me"
+          </button>
+        </div>
+
+        <form class="ai-drawer-input-row" style="margin-top: 10px;" onsubmit="handleAiChatSubmit(event)">
+          <input type="text" id="aiChatInput" class="glass-input ai-drawer-input"
+            placeholder="Ask AI to find swappers or automate..." autocomplete="off">
+          <button type="submit" class="btn btn-primary"
+            style="height: 44px; width: 44px; border-radius: 50%; padding: 0;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </form>
+      </div>
+    </div>
+
   </aside>
 
   <!-- ==========================================================================
@@ -472,11 +570,15 @@
       <div class="modal-header">
         <h3 class="modal-title" id="modalSwapTitle">Propose Skill Swap</h3>
         <button type="button" class="modal-close-btn" onclick="closeModal('modalSwapRequest')">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 12px; background: rgba(255, 255, 255, 0.5); border-radius: var(--radius-md);">
+      <div
+        style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 12px; background: rgba(255, 255, 255, 0.5); border-radius: var(--radius-md);">
         <img src="" id="swapModalPartnerAvatar" class="user-avatar-sm" style="width: 44px; height: 44px;" alt="Partner">
         <div>
           <h4 id="swapModalPartnerName" style="font-weight: 700; color: var(--text-main);">Partner Name</h4>
@@ -489,17 +591,21 @@
 
         <div class="form-group">
           <label class="form-label" for="swapSkillIWant">1. What Skill do you want to learn from them?</label>
-          <select id="swapSkillIWant" class="glass-input" style="height: 48px; border-radius: var(--radius-pill);" required></select>
+          <select id="swapSkillIWant" class="glass-input" style="height: 48px; border-radius: var(--radius-pill);"
+            required></select>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="swapSkillIOffer">2. Which of your offered skills will you teach them?</label>
-          <select id="swapSkillIOffer" class="glass-input" style="height: 48px; border-radius: var(--radius-pill);" required></select>
+          <select id="swapSkillIOffer" class="glass-input" style="height: 48px; border-radius: var(--radius-pill);"
+            required></select>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="swapCustomMessage">3. Introduce yourself and your learning goal</label>
-          <textarea id="swapCustomMessage" class="glass-textarea" rows="3" placeholder="Hi! I saw your profile and would love to exchange weekly 45-min Zoom sessions..." required></textarea>
+          <textarea id="swapCustomMessage" class="glass-textarea" rows="3"
+            placeholder="Hi! I saw your profile and would love to exchange weekly 45-min Zoom sessions..."
+            required></textarea>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
@@ -518,11 +624,15 @@
       <div class="modal-header">
         <h3 class="modal-title" id="modalRatingTitle">Leave Rating & Feedback</h3>
         <button type="button" class="modal-close-btn" onclick="closeModal('modalRating')">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
 
-      <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px;">How was your skill barter experience with your partner?</p>
+      <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px;">How was your skill barter experience
+        with your partner?</p>
 
       <form id="formSubmitRating" onsubmit="handleSubmitRating(event)">
         <input type="hidden" id="ratingSwapId">
@@ -539,7 +649,9 @@
 
         <div class="form-group">
           <label class="form-label" for="ratingComment">Written Review & Feedback</label>
-          <textarea id="ratingComment" class="glass-textarea" rows="3" placeholder="Share your experience: Were they punctual, helpful, patient, and knowledgeable?" required></textarea>
+          <textarea id="ratingComment" class="glass-textarea" rows="3"
+            placeholder="Share your experience: Were they punctual, helpful, patient, and knowledgeable?"
+            required></textarea>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 10px;">
@@ -561,7 +673,10 @@
           <h3 class="modal-title" id="modalAiSummaryTitle">AI Compatibility Intelligence</h3>
         </div>
         <button type="button" class="modal-close-btn" onclick="closeModal('modalAiSummary')">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
 
@@ -575,19 +690,24 @@
       <div class="modal-header">
         <h3 class="modal-title" id="modalPostSkillTitle">Post a New Skill Listing</h3>
         <button type="button" class="modal-close-btn" onclick="closeModal('modalPostSkill')">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
 
       <form id="formPostSkill" onsubmit="handlePostSkillSubmit(event)">
         <div class="form-group">
           <label class="form-label" for="newSkillTitle">Skill Title</label>
-          <input type="text" id="newSkillTitle" class="glass-input" placeholder="e.g. Next.js Web Development, Digital Illustration, Salsa Dance" required>
+          <input type="text" id="newSkillTitle" class="glass-input"
+            placeholder="e.g. Next.js Web Development, Digital Illustration, Salsa Dance" required>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="newSkillDesc">Short 1-Line Description</label>
-          <input type="text" id="newSkillDesc" class="glass-input" placeholder="What will you teach them in practical terms?" required>
+          <input type="text" id="newSkillDesc" class="glass-input"
+            placeholder="What will you teach them in practical terms?" required>
         </div>
 
         <div class="form-group">
@@ -618,7 +738,10 @@
       <div class="modal-header">
         <h3 class="modal-title" id="modalReportTitle" style="color: var(--danger);">Report User or Skill</h3>
         <button type="button" class="modal-close-btn" onclick="closeModal('modalReport')">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
 
@@ -630,7 +753,8 @@
 
         <div class="form-group">
           <label class="form-label" for="reportReasonSelect">Reason for Report</label>
-          <select id="reportReasonSelect" class="glass-input" style="height: 48px; border-radius: var(--radius-pill);" required>
+          <select id="reportReasonSelect" class="glass-input" style="height: 48px; border-radius: var(--radius-pill);"
+            required>
             <option value="Commercial Spam">Demanding Cash / Commercial Spam</option>
             <option value="Fraudulent Offering">Fraudulent / Pirated Software Offering</option>
             <option value="Harassment & Abuse">Harassment or Inappropriate Conduct</option>
@@ -640,7 +764,8 @@
 
         <div class="form-group">
           <label class="form-label" for="reportDetails">Details / Evidence</label>
-          <textarea id="reportDetails" class="glass-textarea" rows="3" placeholder="Provide context regarding this report..." required></textarea>
+          <textarea id="reportDetails" class="glass-textarea" rows="3"
+            placeholder="Provide context regarding this report..." required></textarea>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 10px;">
@@ -656,4 +781,5 @@
   <!-- Main JavaScript Application Logic -->
   <script src="../static/js/script.js"></script>
 </body>
+
 </html>
