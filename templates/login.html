@@ -258,115 +258,107 @@
     }
 
     // Google OAuth Handler
-    async function handleGoogleOAuth() {
-      showToast('Connecting to Google OAuth backend (/auth/google)...', 'info');
-      setTimeout(() => {
-        const googleUser = {
-          id: 'usr_google_101',
-          name: 'Alex Rivera (Google)',
-          email: 'alex.rivera@gmail.com',
-          role: 'user',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-          location: 'San Francisco, CA',
-          visibility: 'public',
-          availability: ['Weekends', 'Weekday Evenings'],
-          skillsOffered: ['Python Programming', 'Data Analysis', 'Flask APIs'],
-          skillsWanted: ['Figma UI/UX', 'Digital Illustration'],
-          rating: 4.9,
-          swapsCompleted: 8
-        };
-        localStorage.setItem('skillswap_user', JSON.stringify(googleUser));
-        localStorage.setItem('skillswap_role', 'user');
-        showToast('Google OAuth Authentication successful! Redirecting...', 'success');
-        setTimeout(() => {
-          window.location.href = 'index.html';
-        }, 700);
-      }, 500);
+// Google OAuth Handler - Redirects to real Flask Google OAuth route
+    function handleGoogleOAuth() {
+      showToast('Redirecting to Google Sign-In...', 'info');
+      window.location.href = API_ROUTES.googleOAuth;
     }
 
+    // Real User Login via MongoDB Backend
     async function handleUserLogin(e) {
       e.preventDefault();
-      const email = document.getElementById('userEmail').value.trim() || 'alex.rivera@example.com';
+      const email = document.getElementById('userEmail').value.trim();
+      const password = document.getElementById('userPassword').value;
 
       showToast('Authenticating user...', 'info');
 
-      setTimeout(() => {
-        const user = {
-          id: 'usr_alex_01',
-          name: 'Alex Rivera',
-          email: email,
-          role: 'user',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-          location: 'San Francisco, CA',
-          visibility: 'public',
-          availability: ['Weekends', 'Weekday Evenings'],
-          skillsOffered: ['Python Programming', 'Flask Web Dev', 'SQL & Databases'],
-          skillsWanted: ['Figma UI/UX', 'Digital Illustration'],
-          rating: 4.9,
-          swapsCompleted: 8
-        };
-        localStorage.setItem('skillswap_user', JSON.stringify(user));
-        localStorage.setItem('skillswap_role', 'user');
-        showToast('Welcome back, Alex! Redirecting to dashboard...', 'success');
+      try {
+        const res = await fetch(API_ROUTES.userLogin, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast(data.error || 'Invalid email or credentials', 'error');
+          return;
+        }
+
+        localStorage.setItem('skillswap_user', JSON.stringify(data.user));
+        localStorage.setItem('skillswap_role', data.user.role || 'user');
+        showToast(`Welcome back, ${data.user.name}! Redirecting...`, 'success');
         setTimeout(() => {
-          window.location.href = 'index.html';
+          window.location.href = '/';
         }, 500);
-      }, 400);
+      } catch (err) {
+        showToast('Server error connecting to backend', 'error');
+      }
     }
 
+    // Real User Registration via MongoDB Backend
     async function handleUserRegister(e) {
       e.preventDefault();
-      const name = document.getElementById('regName').value.trim() || 'Elena Rostova';
-      const email = document.getElementById('regEmail').value.trim() || 'elena@example.com';
-      const skill = document.getElementById('regSkillsOffered').value.trim() || 'Graphic Design';
+      const name = document.getElementById('regName').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const skill = document.getElementById('regSkillsOffered').value.trim() || 'General Mentorship';
 
       showToast('Registering user account on MongoDB...', 'info');
 
-      setTimeout(() => {
-        const newUser = {
-          id: 'usr_' + Date.now(),
-          name: name,
-          email: email,
-          role: 'user',
-          avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-          location: 'New York, NY',
-          visibility: 'public',
-          availability: ['Weekends'],
-          skillsOffered: [skill],
-          skillsWanted: ['Python Programming'],
-          rating: 5.0,
-          swapsCompleted: 0
-        };
-        localStorage.setItem('skillswap_user', JSON.stringify(newUser));
+      try {
+        const res = await fetch(API_ROUTES.userRegister, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, skill })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast(data.error || 'Registration failed', 'error');
+          return;
+        }
+
+        localStorage.setItem('skillswap_user', JSON.stringify(data.user));
         localStorage.setItem('skillswap_role', 'user');
-        showToast('Account created successfully! Loading dashboard...', 'success');
+        showToast('Account created in MongoDB! Loading dashboard...', 'success');
         setTimeout(() => {
-          window.location.href = 'index.html';
+          window.location.href = '/';
         }, 500);
-      }, 500);
+      } catch (err) {
+        showToast('Server error registering account', 'error');
+      }
     }
 
+    // Admin Login Handler
     async function handleAdminLogin(e) {
       e.preventDefault();
-      const email = document.getElementById('adminEmail').value.trim() || 'admin@skillswap.internal';
+      const email = document.getElementById('adminEmail').value.trim() || 'admin@skillswap.com';
+      const password = document.getElementById('adminPassword').value;
 
       showToast('Verifying Administrator credentials...', 'info');
 
-      setTimeout(() => {
-        const adminUser = {
-          id: 'adm_master_001',
-          name: 'Sarah Connor',
-          email: email,
-          role: 'admin',
-          avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
-        };
-        localStorage.setItem('skillswap_user', JSON.stringify(adminUser));
-        localStorage.setItem('skillswap_role', 'admin');
-        showToast('Admin authorized! Opening Administrator Dashboard...', 'success');
-        setTimeout(() => {
-          window.location.href = 'admin.html';
-        }, 500);
-      }, 400);
+      try {
+        const res = await fetch(API_ROUTES.userLogin, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.user && data.user.role === 'admin') {
+          localStorage.setItem('skillswap_user', JSON.stringify(data.user));
+          localStorage.setItem('skillswap_role', 'admin');
+          showToast('Admin authorized! Opening Administrator Dashboard...', 'success');
+          setTimeout(() => {
+            window.location.href = '/admin';
+          }, 500);
+        } else {
+          showToast('Invalid Admin credentials (Try: admin@skillswap.com)', 'error');
+        }
+      } catch (err) {
+        showToast('Error connecting to server', 'error');
+      }
     }
   </script>
 </body>

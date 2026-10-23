@@ -21,15 +21,25 @@ MongoDB Collections Schema:
 =============================================================================
 """
 
-import os
 from datetime import datetime
 from functools import wraps
-from flask import Flask, request, jsonify, redirect, session, url_for, render_template
-from flask_cors import CORS
-# pyrefly: ignore[missing-import]
-from pymongo import MongoClient
+import os
 # pyrefly: ignore[missing-import]
 from bson import ObjectId
+from dotenv import load_dotenv
+from flask import Flask, jsonify, redirect, render_template, request, session, url_for
+from flask_cors import CORS
+from mock_data import seed_mongodb
+# pyrefly: ignore[missing-import]
+from pymongo import MongoClient
+import requests
+
+load_dotenv()
+
+app = Flask(__name__)
+app.secret_key = os.getenv(
+    "SECRET_KEY", "skillswap-insecure-secret-key-change-in-prod"
+)
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "skillswap-insecure-secret-key-change-in-prod")
@@ -92,7 +102,7 @@ def serve_js_script():
     return app.send_static_file("script.js")
 
 # ---------------------------------------------------------------------------
-# MongoDB Connection
+# MongoDB Connection & Auto-Seed
 # ---------------------------------------------------------------------------
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/skillswap")
 client = MongoClient(MONGO_URI)
@@ -104,71 +114,161 @@ reviews_col = db["reviews"]
 moderation_col = db["moderation"]
 broadcasts_col = db["broadcasts"]
 
+# Automatically seed mock_data into local MongoDB if empty
+try:
+  seed_mongodb(db)
+except Exception as e:
+  print(f"⚠️ Could not connect/seed MongoDB: {e}")
+
+
 # Helper for JSON serialization of ObjectId
 def serialize_doc(doc):
-    if not doc:
-        return None
-    doc["id"] = str(doc.pop("_id"))
-    return doc
+  if not doc:
+    return None
+  doc = dict(doc)
+  if "_id" in doc:
+    # Keep custom id if present (from mock_data), else use Mongo _id
+    if "id" not in doc:
+      doc["id"] = str(doc["_id"])
+    doc.pop("_id", None)
+  return doc
+
 
 # ---------------------------------------------------------------------------
-# Google OAuth 2.0 Placeholder Routes
+# Google OAuth 2.0 Real Implementation
 # ---------------------------------------------------------------------------
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "your-google-client-id.apps.googleusercontent.com")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "your-google-client-secret")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+
 
 @app.route("/auth/google")
 def google_auth_login():
-    """Initiates Google OAuth 2.0 flow"""
-    redirect_uri = url_for("google_auth_callback", _external=True)
-    google_auth_url = (
-        f"https://accounts.google.com/o/oauth2/v2/auth?"
-        f"client_id={GOOGLE_CLIENT_ID}&"
-        f"response_type=code&"
-        f"scope=openid%20email%20profile&"
-        f"redirect_uri={redirect_uri}"
-    )
-    return redirect(google_auth_url)
+  """Initiates Google OAuth 2.0 flow"""
+  redirect_uri = url_for("google_auth_callback", _external=True)
+  google_auth_url = (
+      "https://accounts.google.com/o/oauth2/v2/auth?"
+      f"client_id={GOOGLE_CLIENT_ID}&"
+      "response_type=code&"
+      "scope=openid%20email%20profile&"
+      f"redirect_uri={redirect_uri}&"
+      "access_type=offline&"
+      "prompt=select_account"
+  )
+  return redirect(google_auth_url)
+
 
 @app.route("/auth/google/callback")
 def google_auth_callback():
-    """Receives authorization code from Google, creates/logs in user in MongoDB"""
-    code = request.args.get("code")
-    # In production: exchange code with Google token endpoint, then fetch userinfo
-    google_email = "alex.rivera@gmail.com"
+  """Receives authorization code from Google, exchanges for profile, saves to MongoDB"""
+  code = request.args.get("code")
+  if not code:
+    return redirect(url_for("login"))
+
+  redirect_uri = url_for("google_auth_callback", _external=True)
+
+  # 1. Exchange authorization code for access token with Google
+  token_res = requests.post(
+      "https://oauth2.googleapis.com/token",
+      data={
+          "code": code,
+          "client_id": GOOGLE_CLIENT_ID,
+          "client_secret": GOOGLE_CLIENT_SECRET,
+          "redirect_uri": redirect_uri,
+          "grant_type": "authorization_code",
+      },
+  )
+  token_data = token_res.json()
+  access_token = token_data.get("access_token")
+
+  if not access_token:
+    return (
+        jsonify(
+            {"error": "Failed to fetch Google access token", "details": token_data}
+        ),
+        400,
+    )
+
+  # 2. Fetch user profile from Google
+  userinfo_res = requests.get(
+      "https://www.googleapis.com/oauth2/v2/userinfo",
+      headers={"Authorization": f"Bearer {access_token}"},
+  )
+  google_user = userinfo_res.json()
+  google_email = google_user.get("email")
+  google_name = google_user.get("name", "Google User")
+  google_id = google_user.get("id")
+  google_avatar = (
+      google_user.get("picture") or "static/images/default-avatar.png"
+  )
+
+  # 3. Try saving/finding user in MongoDB (Safely catch offline database)
+  try:
     user = users_col.find_one({"email": google_email})
     if not user:
-        user_id = users_col.insert_one({
-            "name": "Alex Rivera (Google)",
-            "email": google_email,
-            "role": "user",
-            "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200",
-            "location": "San Francisco, CA",
-            "visibility": "public",
-            "availability": ["Weekends", "Weekday Evenings"],
-            "skillsOffered": ["Python Programming", "Data Analysis"],
-            "skillsWanted": ["Figma UI/UX", "Digital Illustration"],
-            "rating": 5.0,
-            "swapsCompleted": 0,
-            "created_at": datetime.utcnow()
-        }).inserted_id
-        user = users_col.find_one({"_id": user_id})
+      new_user_doc = {
+          "name": google_name,
+          "email": google_email,
+          "google_id": google_id,
+          "role": "user",
+          "avatar": google_avatar,
+          "location": "Remote",
+          "bio": "Joined via Google OAuth",
+          "visibility": "public",
+          "availability": ["Weekends", "Weekday Evenings"],
+          "skillsOffered": ["General Mentorship"],
+          "skillsWanted": ["Programming"],
+          "rating": 5.0,
+          "reviewCount": 0,
+          "swapsCompleted": 0,
+          "created_at": datetime.utcnow(),
+      }
+      inserted = users_col.insert_one(new_user_doc)
+      user = users_col.find_one({"_id": inserted.inserted_id})
+    else:
+      users_col.update_one(
+          {"_id": user["_id"]}, {"$set": {"google_id": google_id}}
+      )
 
-    # Set user session
-    session["user_id"] = str(user["_id"])
-    return redirect(url_for("home"))
+    user_clean = serialize_doc(user)
 
+  except Exception as db_err:
+    # 🛑 If MongoDB is offline, create a temporary session user object so the app doesn't crash!
+    print(f"⚠️ Database offline error caught: {db_err}")
+    user_clean = {
+        "id": "temp_offline_user",
+        "name": google_name,
+        "email": google_email,
+        "role": "user",
+        "avatar": google_avatar,
+    }
+
+  # 4. Set session & sync to frontend localStorage
+  session["user_id"] = user_clean.get("id")
+  session["user_email"] = google_email
+
+  import json
+
+  user_json = json.dumps(user_clean, default=str)
+  return f"""
+    <script>
+        localStorage.setItem('skillswap_user', {json.dumps(user_json)});
+        localStorage.setItem('skillswap_role', 'user');
+        window.location.href = '/';
+    </script>
+    """
 # ---------------------------------------------------------------------------
 # Authentication APIs
 # ---------------------------------------------------------------------------
 @app.route("/api/auth/login", methods=["POST"])
 def auth_login():
-    data = request.get_json() or {}
-    email = data.get("email")
-    user = users_col.find_one({"email": email})
-    if not user:
-        return jsonify({"error": "Invalid email or credentials"}), 401
-    return jsonify({"message": "Login successful", "user": serialize_doc(user)})
+  data = request.get_json() or {}
+  email = data.get("email")
+  user = users_col.find_one({"email": email})
+  if not user:
+    return jsonify({"error": "Invalid email or credentials"}), 401
+  user_clean = serialize_doc(user)
+  session["user_id"] = user_clean["id"]
+  return jsonify({"message": "Login successful", "user": user_clean})
 
 @app.route("/api/auth/register", methods=["POST"])
 def auth_register():
@@ -200,12 +300,16 @@ def auth_register():
 # ---------------------------------------------------------------------------
 @app.route("/api/profile", methods=["GET"])
 def get_profile():
-    user_id = session.get("user_id")
-    if not user_id:
-        user = users_col.find_one() or {}
-        return jsonify(serialize_doc(user))
-    user = users_col.find_one({"_id": ObjectId(user_id)})
+  user_id = session.get("user_id")
+  if not user_id:
+    user = users_col.find_one({"id": "usr_alex_01"}) or users_col.find_one()
     return jsonify(serialize_doc(user))
+
+  # Check by custom 'id' first, then by Mongo '_id'
+  user = users_col.find_one({"id": user_id})
+  if not user and ObjectId.is_valid(user_id):
+    user = users_col.find_one({"_id": ObjectId(user_id)})
+  return jsonify(serialize_doc(user))
 
 @app.route("/api/profile/update", methods=["POST"])
 def update_profile():

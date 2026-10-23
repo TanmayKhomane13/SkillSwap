@@ -208,3 +208,45 @@ SWAPS = [dict(s, updated_at=s["created_at"]) for s in SEED_SWAPS]
 REVIEWS = []
 MODERATION = list(SEED_MODERATION)
 BROADCAST = dict(SEED_BROADCAST)
+
+# ---------------------------------------------------------------------------
+# MongoDB Seeder (Run `python mock_data.py` to populate local MongoDB)
+# ---------------------------------------------------------------------------
+def seed_mongodb(db):
+  """Seeds local MongoDB with mock_data if the database is empty."""
+  if db["users"].count_documents({}) == 0:
+    print("Seeding local MongoDB with mock_data.py...")
+
+    # Insert Users (keep string 'id' in _id or alongside so frontend works smoothly)
+    for u in USERS:
+      doc = dict(u)
+      db["users"].insert_one(doc)
+
+    # Insert Swaps
+    for s in SWAPS:
+      doc = dict(s)
+      db["swaps"].insert_one(doc)
+
+    # Insert Moderation
+    for m in MODERATION:
+      doc = dict(m)
+      db["moderation"].insert_one(doc)
+
+    # Insert Broadcast
+    db["broadcasts"].insert_one(dict(BROADCAST))
+    print("✅ MongoDB seeded successfully!")
+  else:
+    print("ℹ️ MongoDB already has data. Skipping seed.")
+
+
+if __name__ == "__main__":
+  import os
+  from pymongo import MongoClient
+  from dotenv import load_dotenv
+
+  load_dotenv()
+
+  mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/skillswap")
+  client = MongoClient(mongo_uri)
+  db = client.get_default_database()
+  seed_mongodb(db)
