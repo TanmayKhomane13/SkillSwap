@@ -8,8 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-</head>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
 <body class="auth-page-body">
 
   <!-- Soft Pastel Mesh Background Blobs -->
@@ -159,8 +158,7 @@
 
   </main>
 
-  <script src="script.js"></script>
-  <script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>  <script>
     // Configuration & Backend Endpoints
     const API_ROUTES = {
       userLogin: '/api/auth/login',
