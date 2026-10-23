@@ -48,7 +48,7 @@
   --glass-shadow: 0 8px 32px rgba(31, 38, 135, 0.06);
   --glass-shadow-hover: 0 16px 40px rgba(31, 38, 135, 0.12);
 
-  /* Frosted Glass - Elevated (Navbar, Modals, Sidebars, Inputs) */
+  /* Frosted Glass - Elevated */
   --glass-elevated-bg: rgba(255, 255, 255, 0.75);
   --glass-elevated-blur: blur(20px);
   --glass-elevated-border: 1px solid rgba(255, 255, 255, 0.85);
@@ -201,11 +201,25 @@ body {
   border-radius: var(--radius-lg);
 }
 
-/* Inputs & Form Controls */
+/* Form inputs */
+.form-group {
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 6px;
+}
+
 .glass-input,
 .glass-textarea {
   width: 100%;
-  background: rgba(255, 255, 255, 0.7);
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.85);
@@ -213,7 +227,7 @@ body {
   border-radius: var(--radius-md);
   padding: 12px 16px;
   font-family: inherit;
-  font-size: 0.95rem;
+  font-size: 0.94rem;
   letter-spacing: inherit;
   color: var(--text-main);
   outline: none;
@@ -222,7 +236,7 @@ body {
 
 .glass-input:focus,
 .glass-textarea:focus {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(109, 59, 107, 0.16), 0 4px 16px rgba(109, 59, 107, 0.08);
 }
@@ -230,6 +244,24 @@ body {
 .glass-input::placeholder,
 .glass-textarea::placeholder {
   color: var(--text-light);
+}
+
+select.glass-input {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 18px center;
+  background-size: 16px;
+  padding-right: 44px;
+  cursor: pointer;
+}
+
+select.glass-input option {
+  background: #ffffff;
+  color: var(--text-main);
+  padding: 8px 12px;
 }
 
 /* Buttons */
@@ -324,17 +356,6 @@ body {
   font-size: 0.82rem;
 }
 
-.btn-icon {
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
 /* Badges */
 .badge {
   display: inline-flex;
@@ -379,35 +400,45 @@ body {
 }
 
 /* ==========================================================================
-   NAVBAR (FIX #2 & FIX #3: SCROLL BEHAVIOR & UNIFIED PILL CONTAINER)
+   FIX #1A: NAVBAR SCROLL EFFECT (FLUSH AT TOP -> FLOATING ROUNDED GLASS PILL)
    ========================================================================== */
-.navbar-container {
-  position: sticky;
-  top: 0;
-  left: 0;
-  width: 100%;
-  z-index: 1000;
-  background: transparent;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  transition: all var(--transition-base);
-}
-
-.navbar-container.navbar-scrolled {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
-}
-
 .navbar {
-  max-width: 1280px;
-  margin: 0 auto;
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 100%;
+  border-radius: 0;
+  background: rgba(244, 247, 246, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1000;
+  padding: 14px 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-sizing: border-box;
+}
+
+.navbar.scrolled {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 1200px;
   padding: 12px 24px;
-  gap: 16px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 12px 40px rgba(31, 38, 135, 0.08);
+  border-radius: 9999px;
+  z-index: 1000;
 }
 
 .nav-brand {
@@ -439,7 +470,7 @@ body {
   color: var(--primary);
 }
 
-/* FIX #2: Unified Frosted-Glass Pill Container for Center Tabs */
+/* Center Navigation: Unified Frosted Pill Container */
 .nav-pills-container {
   display: flex;
   align-items: center;
@@ -522,15 +553,18 @@ body {
   box-shadow: 0 6px 18px rgba(109, 59, 107, 0.2);
 }
 
-.btn-ai-toggle .ai-dot-indicator {
-  position: absolute;
-  top: 7px;
-  right: 7px;
+.ai-dot-indicator {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--emerald);
   box-shadow: 0 0 6px var(--emerald);
+}
+
+.btn-ai-toggle .ai-dot-indicator {
+  position: absolute;
+  top: 7px;
+  right: 7px;
 }
 
 /* User Account Pill */
@@ -570,7 +604,6 @@ body {
   white-space: nowrap;
 }
 
-/* User Dropdown */
 .user-dropdown {
   position: absolute;
   top: calc(100% + 8px);
@@ -617,7 +650,171 @@ body {
 }
 
 /* ==========================================================================
-   FIX #5: CUSTOM GLASS DROPDOWNS
+   FIX #1B: AUTHENTICATION PAGE STYLES (LOGIN.HTML CLEAN REPAIR)
+   ========================================================================= */
+.auth-page-body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.auth-card-container {
+  width: 100%;
+  max-width: 440px;
+  padding: 38px 34px;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 16px 48px rgba(31, 38, 135, 0.08);
+  border-radius: 24px;
+  position: relative;
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+.auth-brand-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.auth-brand-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary) 0%, #a855f7 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  margin: 0 auto 12px auto;
+  box-shadow: 0 6px 20px rgba(109, 59, 107, 0.3);
+}
+
+.auth-brand-header h2 {
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: -0.025em;
+}
+
+.auth-role-switch {
+  display: flex;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  margin-bottom: 20px;
+  gap: 4px;
+}
+
+.role-switch-btn {
+  flex: 1;
+  padding: 9px 14px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all var(--transition-fast);
+}
+
+.role-switch-btn.active {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 4px 12px rgba(109, 59, 107, 0.25);
+}
+
+.auth-mode-subtabs {
+  display: flex;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  margin-bottom: 20px;
+  gap: 8px;
+}
+
+.auth-mode-btn {
+  flex: 1;
+  padding: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.auth-mode-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.btn-google {
+  width: 100%;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  color: var(--text-main);
+  font-weight: 600;
+  font-size: 0.92rem;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-bottom: 18px;
+}
+
+.btn-google:hover {
+  background: white;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.google-icon-svg {
+  width: 20px;
+  height: 20px;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text-light);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 18px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.auth-divider::before { margin-right: 12px; }
+.auth-divider::after { margin-left: 12px; }
+
+/* ==========================================================================
+   CUSTOM GLASS DROPDOWNS
    ========================================================================== */
 .custom-dropdown {
   position: relative;
@@ -709,7 +906,7 @@ body {
 }
 
 /* ==========================================================================
-   FIX #4: RIGHT-SIDE SLIDE-OUT AI COPILOT DRAWER
+   RIGHT-SIDE SLIDE-OUT AI COPILOT DRAWER
    ========================================================================== */
 .ai-drawer-overlay {
   position: fixed;
@@ -845,7 +1042,7 @@ body {
 .main-wrapper {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 24px 24px 60px 24px;
+  padding: 96px 24px 60px 24px; /* Ensure content is clear of fixed navbar */
 }
 
 .view-section {
@@ -858,7 +1055,7 @@ body {
 }
 
 /* ==========================================================================
-   FIX #7: AIRY, MINIMAL HERO & USER CARDS (DRASTICALLY REDUCED CLUTTER)
+   AIRY, MINIMAL HERO & USER CARDS
    ========================================================================== */
 .hero-minimal-bar {
   margin-bottom: 24px;
@@ -919,7 +1116,6 @@ body {
   display: block;
 }
 
-/* Category Quick-Chips */
 .category-chips-row {
   display: flex;
   align-items: center;
@@ -1017,7 +1213,6 @@ body {
   color: var(--text-muted);
 }
 
-/* Teaches Section (1 bold title + 1 line description) */
 .card-teaches-block {
   margin-bottom: 14px;
 }
@@ -1049,7 +1244,6 @@ body {
   overflow: hidden;
 }
 
-/* Wants to Learn Inner Box */
 .card-wants-box {
   background: rgba(255, 255, 255, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.8);
@@ -1083,7 +1277,6 @@ body {
   border: 1px solid var(--primary-border);
 }
 
-/* Clean Card Footer: Full width button + subtle icon buttons */
 .card-footer-clean {
   display: flex;
   align-items: center;
@@ -1329,18 +1522,6 @@ input:checked + .toggle-slider:before {
   grid-template-columns: 1fr 1fr;
   gap: 18px;
   margin-bottom: 20px;
-}
-
-.form-group {
-  margin-bottom: 18px;
-}
-
-.form-label {
-  display: block;
-  font-size: 0.86rem;
-  font-weight: 600;
-  color: var(--text-main);
-  margin-bottom: 8px;
 }
 
 .availability-pills-group {
@@ -1605,6 +1786,7 @@ input:checked + .toggle-slider:before {
   .search-controls-row { grid-template-columns: 1fr; }
   .profile-editor-layout { grid-template-columns: 1fr; }
   .form-grid-2 { grid-template-columns: 1fr; }
-  .navbar { padding: 10px 16px; }
+  .navbar { padding: 12px 18px; }
+  .navbar.scrolled { width: 95%; padding: 10px 18px; }
   .nav-pills-container { display: none; }
 }

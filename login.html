@@ -79,14 +79,14 @@
       <div class="auth-divider">or with email</div>
 
       <!-- USER LOGIN FORM -->
-      <form id="userLoginForm" onsubmit="handleUserLogin(event)" autocomplete="off">
+      <form id="userLoginForm" onsubmit="handleUserLogin(event)">
         <div class="form-group">
           <label class="form-label" for="userEmail">Email Address</label>
-          <input type="email" id="userEmail" class="glass-input" placeholder="name@example.com" required autocomplete="off">
+          <input type="email" id="userEmail" name="email" class="glass-input" placeholder="name@example.com" required autocomplete="username">
         </div>
         <div class="form-group">
           <label class="form-label" for="userPassword">Password</label>
-          <input type="password" id="userPassword" class="glass-input" placeholder="Enter your password" required autocomplete="off">
+          <input type="password" id="userPassword" name="password" class="glass-input" placeholder="Enter your password" required autocomplete="current-password">
         </div>
         <button type="submit" class="btn btn-primary" style="width: 100%; height: 48px; margin-top: 8px;">
           <span>Sign In to SkillSwap</span>
@@ -98,22 +98,22 @@
       </form>
 
       <!-- USER REGISTRATION FORM (Initially Hidden) -->
-      <form id="userRegisterForm" style="display: none;" onsubmit="handleUserRegister(event)" autocomplete="off">
+      <form id="userRegisterForm" style="display: none;" onsubmit="handleUserRegister(event)">
         <div class="form-group">
           <label class="form-label" for="regName">Full Name</label>
-          <input type="text" id="regName" class="glass-input" placeholder="Elena Rostova" required autocomplete="off">
+          <input type="text" id="regName" name="name" class="glass-input" placeholder="Elena Rostova" required autocomplete="name">
         </div>
         <div class="form-group">
           <label class="form-label" for="regEmail">Email Address</label>
-          <input type="email" id="regEmail" class="glass-input" placeholder="name@example.com" required autocomplete="off">
+          <input type="email" id="regEmail" name="email" class="glass-input" placeholder="name@example.com" required autocomplete="email">
         </div>
         <div class="form-group">
           <label class="form-label" for="regPassword">Password</label>
-          <input type="password" id="regPassword" class="glass-input" placeholder="Create a password" required minlength="6" autocomplete="off">
+          <input type="password" id="regPassword" name="new-password" class="glass-input" placeholder="Create a password" required minlength="6" autocomplete="new-password">
         </div>
         <div class="form-group">
           <label class="form-label" for="regSkillsOffered">Top Skill You Can Teach</label>
-          <input type="text" id="regSkillsOffered" class="glass-input" placeholder="e.g. Python, Graphic Design, Spanish" autocomplete="off">
+          <input type="text" id="regSkillsOffered" name="skills_offered" class="glass-input" placeholder="e.g. Python, Graphic Design, Spanish">
         </div>
         <button type="submit" class="btn btn-emerald" style="width: 100%; height: 48px; margin-top: 8px;">
           <span>Create My Account</span>
@@ -139,14 +139,14 @@
         </p>
       </div>
 
-      <form id="adminLoginForm" onsubmit="handleAdminLogin(event)" autocomplete="off">
+      <form id="adminLoginForm" onsubmit="handleAdminLogin(event)">
         <div class="form-group">
           <label class="form-label" for="adminEmail">Admin Security ID / Email</label>
-          <input type="email" id="adminEmail" class="glass-input" placeholder="admin@skillswap.internal" required autocomplete="off">
+          <input type="email" id="adminEmail" name="admin_email" class="glass-input" placeholder="admin@skillswap.internal" required autocomplete="username">
         </div>
         <div class="form-group">
           <label class="form-label" for="adminPassword">Security Key / Password</label>
-          <input type="password" id="adminPassword" class="glass-input" placeholder="Enter admin password" required autocomplete="off">
+          <input type="password" id="adminPassword" name="admin_password" class="glass-input" placeholder="Enter admin password" required autocomplete="current-password">
         </div>
         <button type="submit" class="btn btn-primary" style="width: 100%; height: 48px; margin-top: 8px;">
           <span>Authorize Admin Access</span>
@@ -159,6 +159,7 @@
 
   </main>
 
+  <script src="script.js"></script>
   <script>
     // Configuration & Backend Endpoints
     const API_ROUTES = {

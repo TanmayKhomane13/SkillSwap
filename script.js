@@ -1,6 +1,6 @@
 /**
  * ==========================================================================
- * SKILLSWAP PLATFORM - USER APPLICATION CONTROLLER & STATE
+ * SKILLSWAP PLATFORM - SCRIPT.JS (FRONTEND CONTROLLER & STATE STORE)
  * ==========================================================================
  * Strictly Vanilla ES6+ (No external frameworks)
  * Modular architecture prepared for Python Flask + MongoDB + Google OAuth
@@ -218,7 +218,7 @@ const AppState = {
   broadcast: JSON.parse(localStorage.getItem('skillswap_broadcast')) || {
     active: true,
     type: 'announcement',
-    text: '🚀 Welcome to SkillSwap 2.0! Try the new AI Assistant to find mutual swap matches instantly.'
+    text: '🚀 Welcome to SkillSwap! Connect your skills and discover mutual learning partnerships.'
   },
   currentView: 'explore',
   activeCategory: 'all',
@@ -268,34 +268,42 @@ function showToast(message, type = 'info') {
 }
 
 // ==========================================================================
-// 4. FIX #3: NAVBAR SCROLL FLOATING BEHAVIOR & NAVIGATION
+// 4. FIX #1A: NAVBAR SCROLL EFFECT (FLOATING ROUNDED GLASS PILL)
 // ==========================================================================
-window.addEventListener('scroll', () => {
-  const navContainer = document.getElementById('mainNavbar');
-  if (window.scrollY > 20) {
-    navContainer.classList.add('navbar-scrolled');
-  } else {
-    navContainer.classList.remove('navbar-scrolled');
+function handleNavbarScroll() {
+  const navbar = document.querySelector('.navbar');
+  if (navbar) {
+    if (window.scrollY > 20) {
+      navbar.classList.add('scrolled');
+    } else {
+      navbar.classList.remove('scrolled');
+    }
   }
-});
+}
+window.addEventListener('scroll', handleNavbarScroll);
+window.addEventListener('DOMContentLoaded', handleNavbarScroll);
 
 function navigateTo(viewId) {
   AppState.currentView = viewId;
 
   // Update center navigation pills
-  document.querySelectorAll('.nav-pill-btn').forEach(btn => btn.classList.remove('active'));
   const activeBtn = document.getElementById(`navBtn-${viewId}`);
-  if (activeBtn) activeBtn.classList.add('active');
+  if (activeBtn) {
+    document.querySelectorAll('.nav-pill-btn').forEach(btn => btn.classList.remove('active'));
+    activeBtn.classList.add('active');
+  }
 
   // Toggle view sections
-  document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
   const targetSec = document.getElementById(`view-${viewId}`);
-  if (targetSec) targetSec.classList.add('active');
+  if (targetSec) {
+    document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
+    targetSec.classList.add('active');
+  }
 
-  if (viewId === 'explore') renderExploreProfiles();
-  if (viewId === 'matches') renderMatchesView();
-  if (viewId === 'swaps') renderSwapsList();
-  if (viewId === 'profile') syncProfileFormData();
+  if (viewId === 'explore' && document.getElementById('profilesGrid')) renderExploreProfiles();
+  if (viewId === 'matches' && document.getElementById('matchesGrid')) renderMatchesView();
+  if (viewId === 'swaps' && document.getElementById('swapsListContainer')) renderSwapsList();
+  if (viewId === 'profile' && document.getElementById('sidebarAvatarPreview')) syncProfileFormData();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -336,7 +344,7 @@ function handleLogout() {
 }
 
 // ==========================================================================
-// 5. FIX #5: CUSTOM GLASS DROPDOWNS
+// 5. CUSTOM GLASS DROPDOWNS
 // ==========================================================================
 function toggleDropdown(dropdownId) {
   const el = document.getElementById(dropdownId);
@@ -384,13 +392,11 @@ function updateDropdownActiveItem(dropdownId, selectedLabel) {
 }
 
 // ==========================================================================
-// 6. FIX #4: RIGHT-SIDE SLIDE-OUT AI COPILOT DRAWER
+// 6. RIGHT-SIDE SLIDE-OUT AI COPILOT DRAWER
 // ==========================================================================
 function toggleAiDrawer() {
   const drawer = document.getElementById('aiDrawer');
-  const overlay = document.getElementById('aiDrawerOverlay');
   const isOpen = drawer.classList.contains('open');
-
   if (isOpen) {
     closeAiDrawer();
   } else {
@@ -493,7 +499,7 @@ function generateAiCopilotResponse(query) {
 }
 
 // ==========================================================================
-// 7. FIX #7: AIRY, MINIMAL USER CARDS & EXPLORE VIEW
+// 7. AIRY, MINIMAL USER CARDS & EXPLORE VIEW
 // ==========================================================================
 function handleSearchInput() {
   const input = document.getElementById('searchInput');
@@ -574,7 +580,7 @@ function renderExploreProfiles() {
     return;
   }
 
-  // FIX #7: Airy, Minimal User Card Layout
+  // Airy, Minimal User Card Layout
   grid.innerHTML = filtered.map(user => {
     const mainTeachesTitle = user.primarySkill || user.skillsOffered[0];
     const mainTeachesDesc = user.skillDesc || 'Experienced mentor eager to share practical workflows and guide step-by-step.';
@@ -646,7 +652,6 @@ function renderMatchesView() {
   if (!grid) return;
 
   const matches = AppState.users.map(u => {
-    // Check dual overlap
     const theyWantWhatIOffer = u.skillsWanted.some(w => AppState.currentUser.skillsOffered.some(o => o.toLowerCase().includes(w.toLowerCase())));
     const iWantWhatTheyOffer = u.skillsOffered.some(o => AppState.currentUser.skillsWanted.some(w => w.toLowerCase().includes(o.toLowerCase())));
 
@@ -1105,7 +1110,6 @@ function handleReportSubmit(e) {
   const targetId = document.getElementById('reportTargetUserId').value;
   const targetUser = AppState.users.find(u => u.id === targetId) || { name: 'Reported User' };
 
-  // Save to moderation queue
   const currentMod = JSON.parse(localStorage.getItem('skillswap_moderation')) || [];
   currentMod.unshift({
     id: 'mod_' + Date.now(),
@@ -1128,7 +1132,6 @@ function handleReportSubmit(e) {
 // 12. INITIALIZATION
 // ==========================================================================
 document.addEventListener('DOMContentLoaded', () => {
-  // Attach inline tag input enter listeners
   const inputOffered = document.getElementById('inputOfferedTag');
   if (inputOffered) {
     inputOffered.addEventListener('keydown', (e) => {
@@ -1152,5 +1155,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   updateNavbarUserSnippet();
-  navigateTo(AppState.currentView);
+  if (document.getElementById('profilesGrid')) {
+    navigateTo(AppState.currentView);
+  }
 });

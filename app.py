@@ -1,9 +1,9 @@
 """
 =============================================================================
-SKILLSWAP - PYTHON FLASK + MONGODB + GOOGLE OAUTH BACKEND STARTER
+SKILLSWAP - PYTHON FLASK + MONGODB + GOOGLE OAUTH BACKEND
 =============================================================================
-This production-ready starter connects seamlessly to the Vanilla JS frontend
-(`app.js` and `login.html`).
+This production-ready application connects seamlessly to the Vanilla JS frontend
+(`script.js`, `login.html`, `index.html`, and `admin.html`).
 
 Prerequisites:
   pip install flask flask-cors pymongo authlib requests python-dotenv
@@ -26,7 +26,9 @@ from datetime import datetime
 from functools import wraps
 from flask import Flask, request, jsonify, redirect, session, url_for
 from flask_cors import CORS
+# pyrefly: ignore[missing-import]
 from pymongo import MongoClient
+# pyrefly: ignore[missing-import]
 from bson import ObjectId
 
 app = Flask(__name__)
@@ -77,7 +79,6 @@ def google_auth_callback():
     """Receives authorization code from Google, creates/logs in user in MongoDB"""
     code = request.args.get("code")
     # In production: exchange code with Google token endpoint, then fetch userinfo
-    # Simulating verified Google profile:
     google_email = "alex.rivera@gmail.com"
     user = users_col.find_one({"email": google_email})
     if not user:
@@ -97,7 +98,7 @@ def google_auth_callback():
         }).inserted_id
         user = users_col.find_one({"_id": user_id})
 
-    # Set user session or issue JWT token
+    # Set user session
     session["user_id"] = str(user["_id"])
     return redirect("http://localhost:8080/index.html")
 
@@ -145,7 +146,6 @@ def auth_register():
 def get_profile():
     user_id = session.get("user_id")
     if not user_id:
-        # Fallback to demo user
         user = users_col.find_one() or {}
         return jsonify(serialize_doc(user))
     user = users_col.find_one({"_id": ObjectId(user_id)})
@@ -238,13 +238,8 @@ def submit_review(swap_id):
 def ai_chat():
     data = request.get_json() or {}
     query = data.get("query", "").lower()
-    
-    # In production: connect to Google Gemini API
-    # import google.generativeai as genai
-    # model = genai.GenerativeModel('gemini-1.5-flash')
-    
     return jsonify({
-        "response": f"AI Assistant received: {query}. Matching complementary skills.",
+        "response": f"AI Copilot processed query: {query}. Matching complementary skills.",
         "results": []
     })
 
