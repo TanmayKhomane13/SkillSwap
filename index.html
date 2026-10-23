@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkillSwap | Peer-to-Peer Skill Exchange Platform</title>
+  <meta name="description" content="A modern glassmorphic skill swapping platform. Trade skills, learn from peers, and connect with zero monetary barrier.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Floating Mesh Gradient Background Blobs -->
+  <div class="mesh-bg-container" aria-hidden="true">
+    <div class="mesh-blob mesh-blob-1"></div>
+    <div class="mesh-blob mesh-blob-2"></div>
+    <div class="mesh-blob mesh-blob-3"></div>
+    <div class="mesh-blob mesh-blob-4"></div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- ==========================================================================
+       TOP NAVIGATION BAR (ELEVATED GLASS)
+       ========================================================================== -->
+  <header class="navbar-container">
+    <nav class="glass-elevated navbar" aria-label="Main Navigation">
+      
+      <!-- Brand Logo -->
+      <a href="#explore" class="nav-brand" onclick="navigateTo('explore'); return false;">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 3h5v5"></path>
+            <path d="M4 20L21 3"></path>
+            <path d="M21 16v5h-5"></path>
+            <path d="M15 15l6 6"></path>
+            <path d="M4 4l5 5"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>SkillSwap</h1>
+          <p>Barter Skill Exchange</p>
+        </div>
+      </a>
+
+      <!-- Navigation Tabs -->
+      <ul class="nav-links" id="navLinksList">
+        <li>
+          <button type="button" class="nav-link-btn active" id="navBtn-explore" onclick="navigateTo('explore')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span>Explore</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="nav-link-btn" id="navBtn-swaps" onclick="navigateTo('swaps')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"></path>
+            </svg>
+            <span>My Swaps</span>
+            <span class="nav-counter" id="swapsNavCounter">2</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="nav-link-btn" id="navBtn-profile" onclick="navigateTo('profile')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>My Profile & Skills</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="nav-link-btn" id="navBtn-ai" onclick="navigateTo('ai')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"></path>
+            </svg>
+            <span>AI Assistant</span>
+            <span class="badge badge-mint" style="font-size: 0.65rem; padding: 1px 6px;">AI 3.0</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="nav-link-btn" id="navBtn-admin" onclick="navigateTo('admin')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            <span>Admin Portal</span>
+          </button>
+        </li>
+      </ul>
+
+      <!-- User Account Menu & Role Switcher Pill -->
+      <div class="nav-actions">
+        <div class="user-menu-pill" id="userMenuPill" onclick="toggleUserDropdown(event)">
+          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80" alt="Current User" class="user-avatar-sm" id="navUserAvatar">
+          <span class="user-name-snippet" id="navUserName">Alex Rivera</span>
+          <span class="role-tag-mini role-tag-user" id="navRoleBadge">User</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+
+          <!-- Dropdown items -->
+          <div class="glass-elevated user-dropdown" id="userDropdown">
+            <button type="button" class="dropdown-item" onclick="toggleDemoRole(); event.stopPropagation();">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7" r="4"></circle>
+                <line x1="20" y1="8" x2="20" y2="14"></line>
+                <line x1="23" y1="11" x2="17" y2="11"></line>
+              </svg>
+              <span id="roleToggleText">Switch to Admin Mode</span>
+            </button>
+            <button type="button" class="dropdown-item" onclick="navigateTo('profile'); event.stopPropagation();">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+              <span>Manage Profile</span>
+            </button>
+            <div class="dropdown-divider"></div>
+            <button type="button" class="dropdown-item" style="color: var(--danger);" onclick="handleLogout()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              <span>Log Out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </nav>
+  </header>
+
+  <!-- ==========================================================================
+       DYNAMIC PLATFORM-WIDE BROADCAST BANNER (ADMIN DRIVEN)
+       ========================================================================== -->
+  <div class="broadcast-banner-container" id="broadcastContainer" style="display: none;">
+    <div class="glass-elevated broadcast-banner" id="broadcastBanner">
+      <div class="broadcast-content">
+        <span class="broadcast-tag" id="broadcastTypeTag">Announcement</span>
+        <span id="broadcastMessageText">🚀 Welcome to SkillSwap 2.0! Try the new AI Assistant to find mutual swap matches instantly.</span>
+      </div>
+      <button type="button" class="broadcast-close" onclick="dismissBroadcast()" aria-label="Dismiss banner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MAIN CONTENT CONTAINER
+       ========================================================================== -->
+  <main class="main-wrapper">
+
+    <!-- ----------------------------------------------------------------------
+         VIEW 1: SEARCH & DISCOVERY (EXPLORE)
+         ---------------------------------------------------------------------- -->
+    <section class="view-section active" id="view-explore">
+      
+      <!-- Search & Filters Hero Card -->
+      <div class="glass-card hero-search-card">
+        <div class="hero-header">
+          <h2>Discover Peer Skill Swappers</h2>
+          <p>Exchange your talents with other learners without spending a single dollar. Find mentors, partners, and collaborators.</p>
+        </div>
+
+        <!-- Search input and filter selects row -->
+        <div class="search-controls-row">
+          <div class="search-input-wrapper">
+            <svg class="search-icon-left" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="searchInput" class="glass-input search-input-field" placeholder="Search by skill (e.g. Python, Figma, Spanish, Excel)..." oninput="handleSearchInput()">
+            <button type="button" id="searchClearBtn" class="search-clear-btn" onclick="clearSearch()" aria-label="Clear Search">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Availability Filter -->
+          <select id="filterAvailability" class="glass-select filter-select" onchange="applyFilters()">
+            <option value="all">Any Availability</option>
+            <option value="Weekends">Weekends Only</option>
+            <option value="Weekday Evenings">Weekday Evenings</option>
+            <option value="Custom Availability">Flexible / Custom</option>
+          </select>
+
+          <!-- Rating Filter -->
+          <select id="filterRating" class="glass-select filter-select" onchange="applyFilters()">
+            <option value="0">Any Rating</option>
+            <option value="4.8">★ 4.8 & Above</option>
+            <option value="4.5">★ 4.5 & Above</option>
+            <option value="4.0">★ 4.0 & Above</option>
+          </select>
+
+          <!-- Matchmaker Shortcut -->
+          <button type="button" class="btn btn-primary" onclick="runAiInstantMatch()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+            <span>Smart Match Me</span>
+          </button>
+        </div>
+
+        <!-- Quick Filter Category Chips -->
+        <div class="category-chips-row" id="categoryChips">
+          <button type="button" class="category-chip active" onclick="setCategoryFilter('all', this)">All Skills</button>
+          <button type="button" class="category-chip" onclick="setCategoryFilter('Python', this)">Python & Tech</button>
+          <button type="button" class="category-chip" onclick="setCategoryFilter('Figma', this)">UI/UX & Design</button>
+          <button type="button" class="category-chip" onclick="setCategoryFilter('Spanish', this)">Languages</button>
+          <button type="button" class="category-chip" onclick="setCategoryFilter('Photography', this)">Photography</button>
+          <button type="button" class="category-chip" onclick="setCategoryFilter('Music', this)">Music & Instruments</button>
+          <button type="button" class="category-chip" onclick="setCategoryFilter('Marketing', this)">Digital Marketing</button>
+          <button type="button" class="category-chip" onclick="setCategoryFilter('Excel', this)">Excel & Data</button>
+        </div>
+      </div>
+
+      <!-- Public Profiles Grid Container -->
+      <div class="profiles-grid" id="profilesGrid">
+        <!-- Dynamically populated by app.js -->
+      </div>
+    </section>
+
+    <!-- ----------------------------------------------------------------------
+         VIEW 2: USER PROFILE & SKILLS MANAGEMENT
+         ---------------------------------------------------------------------- -->
+    <section class="view-section" id="view-profile">
+      <div class="profile-editor-layout">
+        
+        <!-- Sidebar Summary Card -->
+        <div class="glass-card profile-sidebar-card">
+          <div class="avatar-upload-wrapper">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80" alt="Avatar Preview" class="avatar-preview-img" id="sidebarAvatarPreview">
+            <label class="avatar-upload-btn" title="Change Avatar URL" onclick="promptAvatarUrl()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+            </label>
+          </div>
+
+          <h3 class="profile-sidebar-name" id="sidebarName">Alex Rivera</h3>
+          <p class="profile-sidebar-email" id="sidebarEmail">alex.rivera@example.com</p>
+
+          <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 16px;">
+            <span class="badge badge-amber" id="sidebarRating">★ 4.9 Rating</span>
+            <span class="badge badge-mint" id="sidebarSwapsCount">8 Swaps</span>
+          </div>
+
+          <!-- Profile Visibility Switch -->
+          <div class="visibility-card">
+            <div class="visibility-header">
+              <span class="visibility-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                Discovery Visibility
+              </span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="profileVisibilityToggle" checked onchange="toggleVisibility(this)">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <p class="visibility-desc" id="visibilityDesc">
+              <strong>Public:</strong> Discoverable in global search. Other users can propose swaps.
+            </p>
+          </div>
+        </div>
+
+        <!-- Main Edit Form Card -->
+        <div class="glass-card profile-form-card">
+          <h2 class="section-heading-clean">Profile & Skill Settings</h2>
+          <p class="section-subtext">Configure what you can teach and what you want to learn. This feeds our AI matchmaking engine.</p>
+
+          <form id="profileEditForm" onsubmit="saveUserProfile(event)">
+            
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label" for="profileFullName">Full Name</label>
+                <input type="text" id="profileFullName" class="glass-input" value="Alex Rivera" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="profileLocation">Location / Timezone (Optional)</label>
+                <input type="text" id="profileLocation" class="glass-input" value="San Francisco, CA (PST)">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="profileBio">Bio / Background Overview</label>
+              <textarea id="profileBio" class="glass-textarea" rows="3" placeholder="Share a few words about your background, experience level, and learning style...">Senior Python & Backend Developer with 5+ years building APIs and data pipelines. Passionate about learning UI design and ceramics!</textarea>
+            </div>
+
+            <!-- Availability Selector -->
+            <div class="form-group">
+              <label class="form-label">When are you available for Skill Swapping?</label>
+              <div class="availability-pills-group">
+                <label>
+                  <input type="checkbox" class="availability-pill-checkbox" name="availability" value="Weekends" checked>
+                  <span class="availability-pill-label">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    Weekends
+                  </span>
+                </label>
+                <label>
+                  <input type="checkbox" class="availability-pill-checkbox" name="availability" value="Weekday Evenings" checked>
+                  <span class="availability-pill-label">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line></svg>
+                    Weekday Evenings
+                  </span>
+                </label>
+                <label>
+                  <input type="checkbox" class="availability-pill-checkbox" name="availability" value="Custom Availability">
+                  <span class="availability-pill-label">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+                    Custom Availability
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Skills Offered Tag Manager -->
+            <div class="skill-manager-box">
+              <div class="skill-manager-header">
+                <span class="skill-manager-title offered">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+                  Skills Offered (What You Can Teach)
+                </span>
+                <span class="badge badge-mint" id="offeredCount">3 Skills</span>
+              </div>
+              <div class="skill-tags-editor" id="offeredTagsContainer">
+                <!-- Editable pills inserted dynamically -->
+                <input type="text" id="inputOfferedTag" class="tag-input-inline" placeholder="+ Type skill & press Enter">
+              </div>
+              <div class="skill-preset-recommendations">
+                <span>Popular suggestions:</span>
+                <button type="button" class="quick-add-tag-btn" onclick="addSkillQuick('offered', 'Python Programming')">+ Python</button>
+                <button type="button" class="quick-add-tag-btn" onclick="addSkillQuick('offered', 'Flask Web Dev')">+ Flask</button>
+                <button type="button" class="quick-add-tag-btn" onclick="addSkillQuick('offered', 'SQL & Databases')">+ SQL</button>
+                <button type="button" class="quick-add-tag-btn" onclick="addSkillQuick('offered', 'Public Speaking')">+ Public Speaking</button>
+              </div>
+            </div>
+
+            <!-- Skills Wanted Tag Manager -->
+            <div class="skill-manager-box">
+              <div class="skill-manager-header">
+                <span class="skill-manager-title wanted">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  Skills Wanted (What You Want to Learn)
+                </span>
+                <span class="badge badge-plum" id="wantedCount">2 Skills</span>
+              </div>
+              <div class="skill-tags-editor" id="wantedTagsContainer">
+                <!-- Editable pills inserted dynamically -->
+                <input type="text" id="inputWantedTag" class="tag-input-inline" placeholder="+ Type skill & press Enter">
+              </div>
+              <div class="skill-preset-recommendations">
+                <span>Popular to learn:</span>
+                <button type="button" class="quick-add-tag-btn" onclick="addSkillQuick('wanted', 'Figma UI/UX')">+ Figma</button>
+                <button type="button" class="quick-add-tag-btn" onclick="addSkillQuick('wanted', 'Digital Illustration')">+ Illustration</button>
+                <button type="button" class="quick-add-tag-btn" onclick="addSkillQuick('wanted', 'Guitar Basics')">+ Guitar</button>
+                <button type="button" class="quick-add-tag-btn" onclick="addSkillQuick('wanted', 'Spanish Conversational')">+ Spanish</button>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+              <button type="submit" class="btn btn-primary btn-lg">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                <span>Save Profile Changes</span>
+              </button>
+            </div>
+
+          </form>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ----------------------------------------------------------------------
+         VIEW 3: SWAP REQUESTS & RATINGS WORKFLOW
+         ---------------------------------------------------------------------- -->
+    <section class="view-section" id="view-swaps">
+      <div class="glass-card swaps-view-card">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h2 class="section-heading-clean">Swap Requests & Exchange Hub</h2>
+            <p class="section-subtext" style="margin-bottom: 0;">Manage incoming barter propositions, active collaborations, and leave feedback reviews.</p>
+          </div>
+          <button type="button" class="btn btn-glass" onclick="navigateTo('explore')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <span>Find New Swappers</span>
+          </button>
+        </div>
+
+        <!-- Sub-tabs for Swaps -->
+        <div class="swaps-subtabs" role="tablist">
+          <button type="button" class="swap-subtab-btn active" id="subtab-incoming" onclick="switchSwapSubtab('incoming')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Incoming Offers</span>
+            <span class="badge badge-plum" id="subtabIncomingCount">2</span>
+          </button>
+          <button type="button" class="swap-subtab-btn" id="subtab-outgoing" onclick="switchSwapSubtab('outgoing')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 14 12 9 7 14"></polyline><line x1="12" y1="9" x2="12" y2="21"></line></svg>
+            <span>Pending Outgoing</span>
+            <span class="badge badge-neutral" id="subtabOutgoingCount">1</span>
+          </button>
+          <button type="button" class="swap-subtab-btn" id="subtab-active" onclick="switchSwapSubtab('active')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            <span>Active & Completed</span>
+            <span class="badge badge-mint" id="subtabActiveCount">2</span>
+          </button>
+        </div>
+
+        <!-- Swap Lists Content Container -->
+        <div class="swaps-list-container" id="swapsListContainer">
+          <!-- Populated by app.js -->
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ----------------------------------------------------------------------
+         VIEW 4: DEDICATED AI ASSISTANT SECTION (3 CORE AI FEATURES)
+         ---------------------------------------------------------------------- -->
+    <section class="view-section" id="view-ai">
+      <div class="ai-view-container">
+        
+        <!-- Left AI Features Sidebar -->
+        <div class="glass-card ai-sidebar-card">
+          <div class="ai-pill-hero">
+            <div class="ai-sparkle-dot"></div>
+            <div>
+              <div style="font-weight: 800; font-size: 0.86rem; color: var(--primary);">SkillSwap Intelligence</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted);">Gemini RAG & Agent Automation</div>
+            </div>
+          </div>
+
+          <h3 class="ai-sidebar-title">Core AI Capabilities</h3>
+
+          <!-- Feature 1: Agent Automation -->
+          <div class="ai-feature-card active" onclick="activateAiFeature('automation')">
+            <h4>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              1. Agent Automation
+            </h4>
+            <p>Tell the AI to filter swappers, send swap propositions, or organize pending requests in plain English.</p>
+          </div>
+
+          <!-- Feature 2: Profile Intelligence (RAG) -->
+          <div class="ai-feature-card" onclick="activateAiFeature('rag')">
+            <h4>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+              2. Profile Intelligence (RAG)
+            </h4>
+            <p>Extracts deep compatibility insights, curriculum roadmaps, and summarized swap histories across users.</p>
+          </div>
+
+          <!-- Feature 3: Smart Matchmaker -->
+          <div class="ai-feature-card" onclick="activateAiFeature('matchmaker')">
+            <h4>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              3. Smart Matchmaker
+            </h4>
+            <p>Calculates reciprocal exchange overlap: finds who wants what you teach and teaches what you want.</p>
+          </div>
+
+          <div style="margin-top: auto; padding: 12px; background: rgba(255, 255, 255, 0.4); border-radius: var(--radius-md); font-size: 0.78rem; color: var(--text-muted);">
+            <strong style="color: var(--primary);">Backend Hook:</strong> Calls <code style="background: rgba(0,0,0,0.05); padding: 1px 4px; border-radius: 4px;">/api/ai/chat</code> & <code style="background: rgba(0,0,0,0.05); padding: 1px 4px; border-radius: 4px;">/api/ai/summarize</code> in Python Flask.
+          </div>
+        </div>
+
+        <!-- Right Main AI Chat Studio -->
+        <div class="glass-card ai-chat-window-card">
+          
+          <div class="ai-chat-header">
+            <div class="ai-chat-header-title">
+              <div class="ai-sparkle-dot"></div>
+              <h3>SkillSwap AI Conversational Copilot</h3>
+            </div>
+            <button type="button" class="btn btn-glass btn-sm" onclick="clearAiChat()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              <span>Reset Chat</span>
+            </button>
+          </div>
+
+          <!-- Chat Messages Area -->
+          <div class="ai-chat-messages-area" id="aiChatMessages">
+            <!-- Messages inserted dynamically -->
+          </div>
+
+          <!-- Suggested Quick Prompts -->
+          <div class="ai-suggested-prompts-row" id="aiPromptSuggestions">
+            <button type="button" class="prompt-chip-btn" onclick="sendAiPrompt('Find someone who can teach Figma UI/UX on weekends')">
+              🎨 "Find someone who teaches Figma on weekends"
+            </button>
+            <button type="button" class="prompt-chip-btn" onclick="sendAiPrompt('Show all my pending swap requests and next steps')">
+              🔄 "Summarize my pending swap requests"
+            </button>
+            <button type="button" class="prompt-chip-btn" onclick="sendAiPrompt('Who is my highest compatibility dual-swap match?')">
+              ⚡ "Find best reciprocal match for me"
+            </button>
+          </div>
+
+          <!-- Chat Input Bar -->
+          <form class="ai-chat-input-row" onsubmit="handleAiChatSubmit(event)">
+            <input type="text" id="aiChatInput" class="glass-input ai-chat-input" placeholder="Ask AI to find swappers, audit your skills, or summarize swaps..." autocomplete="off">
+            <button type="submit" class="btn btn-primary" style="height: 48px; width: 48px; border-radius: 50%; padding: 0;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+          </form>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ----------------------------------------------------------------------
+         VIEW 5: ADMIN ROLE DASHBOARD
+         ---------------------------------------------------------------------- -->
+    <section class="view-section" id="view-admin">
+      
+      <div class="admin-view-header">
+        <h2 class="section-heading-clean" style="display: flex; align-items: center; gap: 8px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="color: var(--primary);">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          Platform Administrator Dashboard
+        </h2>
+        <p class="section-subtext">Live oversight, AI content moderation, swap integrity monitoring, and community broadcasts.</p>
+      </div>
+
+      <!-- Quick Platform Statistics -->
+      <div class="admin-stats-grid">
+        <div class="glass-card admin-stat-card">
+          <div class="admin-stat-icon stat-icon-plum">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          </div>
+          <div class="admin-stat-info">
+            <h5>Total Swappers</h5>
+            <div class="stat-number" id="statTotalUsers">1,428</div>
+          </div>
+        </div>
+
+        <div class="glass-card admin-stat-card">
+          <div class="admin-stat-icon stat-icon-emerald">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"></path></svg>
+          </div>
+          <div class="admin-stat-info">
+            <h5>Active Swaps</h5>
+            <div class="stat-number" id="statActiveSwaps">342</div>
+          </div>
+        </div>
+
+        <div class="glass-card admin-stat-card">
+          <div class="admin-stat-icon stat-icon-danger">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          </div>
+          <div class="admin-stat-info">
+            <h5>Moderation Queue</h5>
+            <div class="stat-number" id="statModQueue">4</div>
+          </div>
+        </div>
+
+        <div class="glass-card admin-stat-card">
+          <div class="admin-stat-icon stat-icon-amber">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </div>
+          <div class="admin-stat-info">
+            <h5>Average Rating</h5>
+            <div class="stat-number">4.88 ★</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Admin Sub-navigation Tabs -->
+      <div class="admin-tabs-nav">
+        <button type="button" class="admin-tab-btn active" id="adminTab-moderation" onclick="switchAdminTab('moderation')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          <span>Skill & User Moderation</span>
+        </button>
+        <button type="button" class="admin-tab-btn" id="adminTab-swaps" onclick="switchAdminTab('swaps')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"></path></svg>
+          <span>Swap Monitor</span>
+        </button>
+        <button type="button" class="admin-tab-btn" id="adminTab-broadcasts" onclick="switchAdminTab('broadcasts')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span>Platform Broadcasts</span>
+        </button>
+        <button type="button" class="admin-tab-btn" id="adminTab-reports" onclick="switchAdminTab('reports')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>Download Reports</span>
+        </button>
+      </div>
+
+      <!-- Tab Content 1: Moderation Queue -->
+      <div class="admin-subcontent" id="adminContent-moderation">
+        <div class="glass-card admin-table-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="font-family: var(--font-heading); font-size: 1.15rem; color: var(--text-main);">
+              AI-Flagged Content & Reported Accounts
+            </h3>
+            <span class="badge badge-plum">Automated LLM Sentiment & Spam Filter</span>
+          </div>
+
+          <table class="custom-glass-table">
+            <thead>
+              <tr>
+                <th>Reported User / Item</th>
+                <th>Content Description / Skill</th>
+                <th>AI Classification</th>
+                <th>AI Reason Summary</th>
+                <th>Admin Actions</th>
+              </tr>
+            </thead>
+            <tbody id="moderationTableBody">
+              <!-- Dynamically populated by app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab Content 2: Swap Monitor -->
+      <div class="admin-subcontent" id="adminContent-swaps" style="display: none;">
+        <div class="glass-card admin-table-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+            <h3 style="font-family: var(--font-heading); font-size: 1.15rem; color: var(--text-main);">
+              Platform-Wide Swap Transactions
+            </h3>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="category-chip active" onclick="filterAdminSwaps('all', this)">All</button>
+              <button type="button" class="category-chip" onclick="filterAdminSwaps('pending', this)">Pending</button>
+              <button type="button" class="category-chip" onclick="filterAdminSwaps('accepted', this)">Accepted</button>
+              <button type="button" class="category-chip" onclick="filterAdminSwaps('cancelled', this)">Cancelled</button>
+            </div>
+          </div>
+
+          <table class="custom-glass-table">
+            <thead>
+              <tr>
+                <th>Swap ID</th>
+                <th>Requester</th>
+                <th>Partner</th>
+                <th>Skills Exchanged</th>
+                <th>Created Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="adminSwapsTableBody">
+              <!-- Populated by app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab Content 3: Platform Broadcasts -->
+      <div class="admin-subcontent" id="adminContent-broadcasts" style="display: none;">
+        <div class="glass-card admin-table-card">
+          <h3 style="font-family: var(--font-heading); font-size: 1.15rem; color: var(--text-main); margin-bottom: 8px;">
+            Send Real-Time Platform Broadcast
+          </h3>
+          <p class="section-subtext">Publish urgent notifications, maintenance announcements, or feature highlights to all online users.</p>
+
+          <div class="broadcast-form-grid">
+            <form onsubmit="handleSendBroadcast(event)">
+              <div class="form-group">
+                <label class="form-label" for="broadcastTypeSelect">Announcement Type</label>
+                <select id="broadcastTypeSelect" class="glass-select" onchange="updateBroadcastPreview()">
+                  <option value="announcement">Feature Announcement (Purple Accent)</option>
+                  <option value="warning">System Advisory / Maintenance (Amber Accent)</option>
+                  <option value="critical">Critical Urgent Notice (Coral Red Accent)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="broadcastTextInput">Broadcast Message</label>
+                <textarea id="broadcastTextInput" class="glass-textarea" rows="4" placeholder="Enter message text that will be pinned to all user headers..." required oninput="updateBroadcastPreview()">🚀 Welcome to SkillSwap! Connect your skills and discover mutual learning partnerships.</textarea>
+              </div>
+
+              <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn btn-primary">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                  <span>Publish Broadcast</span>
+                </button>
+                <button type="button" class="btn btn-glass" onclick="handleClearBroadcast()">
+                  <span>Clear Active Banner</span>
+                </button>
+              </div>
+            </form>
+
+            <div class="broadcast-preview-box">
+              <h4 style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted); margin-bottom: 12px; text-transform: uppercase;">
+                Live User Banner Preview:
+              </h4>
+              <div class="broadcast-banner" id="adminPreviewBanner" style="display: flex;">
+                <div class="broadcast-content">
+                  <span class="broadcast-tag" id="previewBadgeTag">Announcement</span>
+                  <span id="previewMessageText">🚀 Welcome to SkillSwap! Connect your skills and discover mutual learning partnerships.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content 4: Download Reports -->
+      <div class="admin-subcontent" id="adminContent-reports" style="display: none;">
+        <div class="glass-card admin-table-card">
+          <h3 style="font-family: var(--font-heading); font-size: 1.15rem; color: var(--text-main); margin-bottom: 8px;">
+            Export Platform Analytics & Audit Data
+          </h3>
+          <p class="section-subtext">Generate and download structured CSV or JSON data records for offline evaluation.</p>
+
+          <div class="reports-download-grid">
+            
+            <!-- Report 1: User Activity -->
+            <div class="glass-card report-export-card">
+              <div>
+                <h4>User Activity & Profiles</h4>
+                <p>Full register of all active users, their skills offered, wanted, ratings, and account status.</p>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn btn-glass btn-sm" onclick="exportData('users', 'csv')">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  <span>Export CSV</span>
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="exportData('users', 'json')">
+                  <span>Export JSON</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Report 2: Feedback & Ratings -->
+            <div class="glass-card report-export-card">
+              <div>
+                <h4>Feedback & Ratings Logs</h4>
+                <p>Every submitted 1–5 star rating, peer comments, endorsed skills, and timestamped reviews.</p>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn btn-glass btn-sm" onclick="exportData('feedback', 'csv')">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  <span>Export CSV</span>
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="exportData('feedback', 'json')">
+                  <span>Export JSON</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Report 3: Swap Statistics -->
+            <div class="glass-card report-export-card">
+              <div>
+                <h4>Swap Statistics & Velocity</h4>
+                <p>Transaction records of pending, accepted, cancelled, and completed swaps with skill pairs.</p>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn btn-glass btn-sm" onclick="exportData('swaps', 'csv')">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  <span>Export CSV</span>
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="exportData('swaps', 'json')">
+                  <span>Export JSON</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ==========================================================================
+       MODALS
+       ========================================================================== -->
+
+  <!-- Modal 1: Send Swap Request -->
+  <div class="modal-overlay" id="modalSwapRequest" role="dialog" aria-modal="true" aria-labelledby="modalSwapTitle">
+    <div class="glass-elevated modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalSwapTitle">Propose Skill Swap</h3>
+        <button type="button" class="modal-close-btn" onclick="closeModal('modalSwapRequest')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 12px; background: rgba(255, 255, 255, 0.5); border-radius: var(--radius-md);">
+        <img src="" id="swapModalPartnerAvatar" class="user-avatar-sm" style="width: 44px; height: 44px;" alt="Partner">
+        <div>
+          <h4 id="swapModalPartnerName" style="font-weight: 700; color: var(--text-main);">Partner Name</h4>
+          <p id="swapModalPartnerLocation" style="font-size: 0.78rem; color: var(--text-muted);">Location</p>
+        </div>
+      </div>
+
+      <form id="formSendSwapRequest" onsubmit="handleSendSwapSubmit(event)">
+        <input type="hidden" id="swapTargetUserId">
+
+        <div class="form-group">
+          <label class="form-label" for="swapSkillIWant">1. What Skill do you want to learn from them?</label>
+          <select id="swapSkillIWant" class="glass-select" required>
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="swapSkillIOffer">2. Which of your offered skills will you teach them?</label>
+          <select id="swapSkillIOffer" class="glass-select" required>
+            <!-- Populated with current user's skillsOffered -->
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="swapCustomMessage">3. Introduce yourself and your learning goal</label>
+          <textarea id="swapCustomMessage" class="glass-textarea" rows="3" placeholder="Hi! I saw your profile and would love to exchange weekly 45-min Zoom sessions..." required></textarea>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <button type="button" class="btn btn-glass" onclick="closeModal('modalSwapRequest')">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            <span>Send Swap Offer</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Leave Rating & Feedback -->
+  <div class="modal-overlay" id="modalRating" role="dialog" aria-modal="true" aria-labelledby="modalRatingTitle">
+    <div class="glass-elevated modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalRatingTitle">Leave Rating & Feedback</h3>
+        <button type="button" class="modal-close-btn" onclick="closeModal('modalRating')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <p class="section-subtext" id="ratingModalSubtext">How was your skill exchange experience with your swap partner?</p>
+
+      <form id="formSubmitRating" onsubmit="handleSubmitRating(event)">
+        <input type="hidden" id="ratingSwapId">
+
+        <label class="form-label" style="text-align: center;">Select Star Rating</label>
+        <div class="star-rating-select" id="starRatingSelect" style="justify-content: center;">
+          <button type="button" class="star-btn" data-star="1" onclick="setStarRating(1)">★</button>
+          <button type="button" class="star-btn" data-star="2" onclick="setStarRating(2)">★</button>
+          <button type="button" class="star-btn" data-star="3" onclick="setStarRating(3)">★</button>
+          <button type="button" class="star-btn" data-star="4" onclick="setStarRating(4)">★</button>
+          <button type="button" class="star-btn active" data-star="5" onclick="setStarRating(5)">★</button>
+        </div>
+        <input type="hidden" id="selectedStarValue" value="5">
+
+        <div class="form-group">
+          <label class="form-label" for="ratingComment">Written Review & Feedback</label>
+          <textarea id="ratingComment" class="glass-textarea" rows="3" placeholder="Share your experience: Were they punctual, helpful, patient, and knowledgeable?" required>Great mentor! Super patient with explanations and shared useful learning exercises.</textarea>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-glass" onclick="closeModal('modalRating')">Cancel</button>
+          <button type="submit" class="btn btn-emerald">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>Submit Review</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: AI Profile Summary (RAG Intelligence) -->
+  <div class="modal-overlay" id="modalAiSummary" role="dialog" aria-modal="true" aria-labelledby="modalAiSummaryTitle">
+    <div class="glass-elevated modal-card" style="max-width: 620px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="ai-sparkle-dot"></div>
+          <h3 class="modal-title" id="modalAiSummaryTitle">AI Profile Intelligence</h3>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeModal('modalAiSummary')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div id="aiSummaryContentArea">
+        <!-- Injected by app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Main JavaScript Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
