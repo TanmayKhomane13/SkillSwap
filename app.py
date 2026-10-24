@@ -109,6 +109,11 @@ def execute(sql, args=()):
         conn.close()
 
 
+def split_skills(text):
+    """'Python, SQL' -> ['Python', 'SQL'] (empty items are dropped)."""
+    return [s.strip() for s in str(text).split(",") if s.strip()]
+
+
 def password_problem(password):
     """Return a message if the password is too weak, otherwise None."""
     if not 8 <= len(password) <= 128:
@@ -225,7 +230,8 @@ def auth_register():
     bio = str(data.get("bio", "")).strip()
     experience = data.get("experience", "Beginner")
     availability = data.get("availability", "Weekends")
-    skills = [s.strip() for s in str(data.get("skill", "")).split(",") if s.strip()]
+    skills_offered = split_skills(data.get("skillsOffered", ""))
+    skills_wanted = split_skills(data.get("skillsWanted", ""))
 
     if not name:
         return error("Name is required")
@@ -234,6 +240,10 @@ def auth_register():
     problem = password_problem(password)
     if problem:
         return error(problem)
+    if not skills_offered:
+        return error("Add at least one skill you can teach")
+    if not skills_wanted:
+        return error("Add at least one skill you want to learn")
     if experience not in EXPERIENCE_LEVELS:
         return error("Experience must be one of: " + ", ".join(EXPERIENCE_LEVELS))
     if availability not in AVAILABILITY_OPTIONS:
@@ -242,10 +252,10 @@ def auth_register():
     try:
         user_id = execute(
             """INSERT INTO users
-               (name, email, password_hash, bio, skills_offered, experience, availability)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+               (name, email, password_hash, bio, skills_offered, skills_wanted, experience, availability)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (name, email, generate_password_hash(password), bio,
-             json.dumps(skills), experience, availability),
+             json.dumps(skills_offered), json.dumps(skills_wanted), experience, availability),
         )
         new_row = fetch_one(f"SELECT {USER_COLUMNS} FROM users WHERE id = ?", (user_id,))
         if new_row:

@@ -143,9 +143,14 @@
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label" for="regSkillsOffered">Top Skill You Can Teach</label>
+          <label class="form-label" for="regSkillsOffered">Skills You Can Teach</label>
           <input type="text" id="regSkillsOffered" name="skills_offered" class="glass-input"
-            placeholder="e.g. Python, Graphic Design, Spanish">
+            placeholder="e.g. Python, Graphic Design (separate with commas)" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="regSkillsWanted">Skills You Want to Learn</label>
+          <input type="text" id="regSkillsWanted" name="skills_wanted" class="glass-input"
+            placeholder="e.g. Figma, Spanish (separate with commas)" required>
         </div>
         <button type="submit" class="btn btn-emerald" style="width: 100%; height: 48px; margin-top: 8px;">
           <span>Create My Account</span>
@@ -306,7 +311,8 @@
       const name = document.getElementById('regName').value.trim();
       const email = document.getElementById('regEmail').value.trim();
       const password = document.getElementById('regPassword').value;
-      const skill = document.getElementById('regSkillsOffered').value.trim() || 'General Mentorship';
+      const skillsOffered = document.getElementById('regSkillsOffered').value.trim();
+      const skillsWanted = document.getElementById('regSkillsWanted').value.trim();
       const bio = document.getElementById('regBio').value.trim();
       const experience = document.getElementById('regExperience').value;
       const availability = document.getElementById('regAvailability').value;
@@ -317,7 +323,7 @@
         const res = await fetch(API_ROUTES.userRegister, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, password, bio, experience, availability, skill })
+          body: JSON.stringify({ name, email, password, bio, experience, availability, skillsOffered, skillsWanted })
         });
         const data = await res.json();
 

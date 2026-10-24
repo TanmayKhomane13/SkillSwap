@@ -84,8 +84,8 @@ def seed_database():
             email           TEXT UNIQUE NOT NULL,
             password_hash   TEXT NOT NULL UNIQUE,              -- hashed, never plain text
             bio             TEXT NOT NULL DEFAULT '',
-            skills_offered  TEXT NOT NULL DEFAULT '[]',        -- JSON list
-            skills_wanted   TEXT NOT NULL DEFAULT '[]',        -- JSON list
+            skills_offered  TEXT NOT NULL,                     -- JSON list, required
+            skills_wanted   TEXT NOT NULL,                     -- JSON list, required
             experience      TEXT NOT NULL DEFAULT 'Beginner',  -- dropdown
             availability    TEXT NOT NULL DEFAULT 'Weekends',  -- dropdown
             profile_pic     BLOB,                              -- the image bytes (NULL = no picture)
