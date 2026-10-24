@@ -25,3 +25,4 @@ skillswap.db
 static/uploads/
 
 ai_models
+vector_store
