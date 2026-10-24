@@ -7,6 +7,7 @@ This production-ready application connects seamlessly to the Vanilla JS frontend
 
 Prerequisites:
   pip install flask flask-cors pymongo authlib requests python-dotenv
+  (optional, for gzip) pip install flask-compress
 
 MongoDB Collections Schema:
   - `users`: { _id, email, password_hash, google_id, name, avatar, location,
@@ -43,15 +44,27 @@ app.secret_key = os.getenv(
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "skillswap-insecure-secret-key-change-in-prod")
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+# PERF: allow browsers to cache static files (was 0)
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 86400
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 CORS(app, supports_credentials=True)
 
+# PERF: gzip responses if flask-compress is installed (optional)
+try:
+    from flask_compress import Compress
+    Compress(app)
+except ImportError:
+    pass
+
 @app.after_request
 def add_no_cache_headers(response):
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '-1'
+    # PERF: only disable caching for HTML/API; let static assets be cached
+    if request.path.startswith("/static/"):
+        response.headers['Cache-Control'] = 'public, max-age=86400'
+    else:
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '-1'
     return response
 
 # ---------------------------------------------------------------------------
@@ -62,13 +75,27 @@ def add_no_cache_headers(response):
 @app.route("/index.html")
 def home():
     """Serves the main User Dashboard view"""
+    # Redirect to login page if not logged in
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
     return render_template("index.html")
 
 @app.route("/login")
 @app.route("/login.html")
 def login():
     """Serves the Login & Access Portal view"""
+    # Landing on the login page means signed out: clear any server session
+    session.clear()
     return render_template("login.html")
+
+@app.route("/logout")
+@app.route("/api/auth/logout", methods=["GET", "POST"])
+def logout():
+    """Clears the server session"""
+    session.clear()
+    if request.path.startswith("/api/"):
+        return jsonify({"message": "Logged out"})
+    return redirect(url_for("login"))
 
 @app.route("/admin")
 @app.route("/admin.html")
@@ -104,8 +131,10 @@ def serve_js_script():
 # ---------------------------------------------------------------------------
 # MongoDB Connection & Auto-Seed
 # ---------------------------------------------------------------------------
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/skillswap")
-client = MongoClient(MONGO_URI)
+# PERF: 127.0.0.1 avoids slow localhost/IPv6 resolution
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017/skillswap")
+# PERF: fail fast (2s instead of 30s) when DB is unreachable, bigger pool
+client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=2000, maxPoolSize=50)
 db = client.get_default_database()
 
 users_col = db["users"]
@@ -119,6 +148,15 @@ try:
   seed_mongodb(db)
 except Exception as e:
   print(f"⚠️ Could not connect/seed MongoDB: {e}")
+
+# PERF: indexes so lookups don't scan whole collections
+try:
+  users_col.create_index("email")
+  users_col.create_index("id")
+  users_col.create_index("visibility")
+  swaps_col.create_index("created_at")
+except Exception as e:
+  print(f"⚠️ Could not create indexes: {e}")
 
 
 # Helper for JSON serialization of ObjectId
@@ -176,6 +214,7 @@ def google_auth_callback():
           "redirect_uri": redirect_uri,
           "grant_type": "authorization_code",
       },
+      timeout=5,  # PERF: don't hang forever
   )
   token_data = token_res.json()
   access_token = token_data.get("access_token")
@@ -192,6 +231,7 @@ def google_auth_callback():
   userinfo_res = requests.get(
       "https://www.googleapis.com/oauth2/v2/userinfo",
       headers={"Authorization": f"Bearer {access_token}"},
+      timeout=5,  # PERF: don't hang forever
   )
   google_user = userinfo_res.json()
   google_email = google_user.get("email")
@@ -305,10 +345,12 @@ def get_profile():
     user = users_col.find_one({"id": "usr_alex_01"}) or users_col.find_one()
     return jsonify(serialize_doc(user))
 
+  # PERF: single query instead of up to two sequential ones
   # Check by custom 'id' first, then by Mongo '_id'
-  user = users_col.find_one({"id": user_id})
-  if not user and ObjectId.is_valid(user_id):
-    user = users_col.find_one({"_id": ObjectId(user_id)})
+  conditions = [{"id": user_id}]
+  if ObjectId.is_valid(user_id):
+    conditions.append({"_id": ObjectId(user_id)})
+  user = users_col.find_one({"$or": conditions})
   return jsonify(serialize_doc(user))
 
 @app.route("/api/profile/update", methods=["POST"])
@@ -343,7 +385,8 @@ def get_users():
             {"skillsOffered": {"$regex": skill_filter, "$options": "i"}},
             {"skillsWanted": {"$regex": skill_filter, "$options": "i"}}
         ]
-    users = [serialize_doc(u) for u in users_col.find(query)]
+    # PERF: cap result size
+    users = [serialize_doc(u) for u in users_col.find(query).limit(100)]
     return jsonify(users)
 
 # ---------------------------------------------------------------------------
@@ -351,7 +394,8 @@ def get_users():
 # ---------------------------------------------------------------------------
 @app.route("/api/swaps", methods=["GET"])
 def get_swaps():
-    swaps = [serialize_doc(s) for s in swaps_col.find()]
+    # PERF: cap result size
+    swaps = [serialize_doc(s) for s in swaps_col.find().limit(100)]
     return jsonify(swaps)
 
 @app.route("/api/swaps/create", methods=["POST"])
@@ -408,7 +452,8 @@ def ai_chat():
 # ---------------------------------------------------------------------------
 @app.route("/api/admin/moderation", methods=["GET"])
 def get_moderation_items():
-    items = [serialize_doc(i) for i in moderation_col.find()]
+    # PERF: cap result size
+    items = [serialize_doc(i) for i in moderation_col.find().limit(100)]
     return jsonify(items)
 
 @app.route("/api/admin/broadcast", methods=["POST"])

@@ -5,10 +5,19 @@ venv/
 
 # Environment variables & secrets
 .env
+.env.*
 
 # Python cache
 __pycache__/
-*.pyc
+*.py[cod]
 
-# Custom folders
-ai_models/
+# Serialized model/data files
+*.pkl
+
+# Training outputs and checkpoints
+checkpoints/
+runs/
+
+# IDE and OS files
+.DS_Store
+.vscode/
