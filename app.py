@@ -21,9 +21,13 @@ from flask import (
     Flask, jsonify, redirect, render_template, request, send_file, session, url_for,
 )
 from flask_cors import CORS
+from flask import send_from_directory
+
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from vector_store import store_profile
+
+from sAI import handle_message
 
 # ---------------------------------------------------------------------
 # Settings
@@ -459,6 +463,23 @@ def update_report_status(report_id):
     execute("UPDATE reports SET status = ? WHERE id = ?", (status, report_id))
     return jsonify({"message": "Report updated", "status": status})
 
+# ========================== sAI =========================================
+@app.route("/api/ai/chat", methods=["POST"])
+@login_required
+def ai_chat():
+    data = get_json()
+    message = str(data.get("message", "")).strip()
+    if not message:
+        return error("Message is required")
+
+    try:
+        reply = handle_message(message)
+    except Exception as e:
+        print(f"[sAI] error: {e}")
+        return error("AI service temporarily unavailable", 500)
+
+    return jsonify({"reply": reply})
+# ========================================================================
 
 # ---------------------------------------------------------------------
 if __name__ == "__main__":

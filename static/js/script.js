@@ -10,7 +10,7 @@
 // 1. CONFIGURATION & REST API CONTRACT
 // ==========================================================================
 const CONFIG = {
-  API_BASE_URL: 'http://localhost:5000',
+  API_BASE_URL: '', // same origin as the Flask page, so the login cookie is always sent
   USE_MOCK_BACKEND: false, // Switch to false when connecting to running Flask server
   ENDPOINTS: {
     LOGIN: '/api/auth/login',
@@ -236,6 +236,17 @@ function saveStateToStorage() {
   localStorage.setItem('skillswap_user', JSON.stringify(AppState.currentUser));
   localStorage.setItem('skillswap_all_users', JSON.stringify(AppState.users));
   localStorage.setItem('skillswap_swaps', JSON.stringify(AppState.swaps));
+}
+
+// Escapes text before it is inserted with innerHTML
+function escapeHtml(value = '') {
+  return String(value).replace(/[&<>"']/g, c => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[c]);
 }
 
 // ==========================================================================
@@ -576,10 +587,34 @@ async function handleAiChatSubmit(e) {
   const userText = input.value.trim();
   if (!userText) return;
 
-  AppState.chatMessages.push({ sender: 'user', text: userText });
+  // msg.text is inserted with innerHTML, so user text is escaped first
+  AppState.chatMessages.push({ sender: 'user', text: escapeHtml(userText) });
   input.value = '';
   renderAiDrawerMessages();
 
+  try {
+    const res = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.AI_CHAT}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: userText })
+    });
+    const data = await res.json().catch(() => ({}));
+
+    AppState.chatMessages.push({
+      sender: 'ai',
+      text: res.ok
+        ? escapeHtml(data.reply || 'No response received.')
+        : escapeHtml(data.error || `Request failed (${res.status})`)
+    });
+  } catch (err) {
+    AppState.chatMessages.push({
+      sender: 'ai',
+      text: escapeHtml(`AI request failed: ${err.message}`)
+    });
+  }
+
+  renderAiDrawerMessages();
 }
 
 function generateAiCopilotResponse(query) {
@@ -1019,7 +1054,11 @@ async function uploadProfilePic(input) {
   formData.append('photo', file);
 
   try {
-    const res = await fetch('/api/profile/picture', { method: 'POST', body: formData });
+    const res = await fetch(`${CONFIG.API_BASE_URL}/api/profile/picture`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData
+    });
     const data = await res.json();
 
     if (!res.ok) {
@@ -1086,8 +1125,9 @@ async function saveUserProfile(e) {
   user.availability = document.getElementById('profileAvailability').value;
 
   try {
-    const res = await fetch(CONFIG.ENDPOINTS.UPDATE_PROFILE, {
+    const res = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.UPDATE_PROFILE}`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: user.name,
@@ -1296,8 +1336,9 @@ function handleReportSubmit(e) {
   const targetUser = AppState.users.find(u => u.id === targetId) || { name: 'Reported User' };
 
   // Save the report in the database (reports table)
-  fetch(CONFIG.ENDPOINTS.REPORT_CONTENT, {
+  fetch(`${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.REPORT_CONTENT}`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       reported_user_id: targetId,
@@ -1377,7 +1418,9 @@ async function loadCurrentUserFromBackend() {
 
 async function loadUsersFromBackend() {
   try {
-    const res = await fetch(CONFIG.ENDPOINTS.GET_USERS);
+    const res = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.GET_USERS}`, {
+      credentials: 'include'
+    });
     if (!res.ok) return;
     const users = await res.json();
     AppState.users = users.filter(u => u.id !== AppState.currentUser.id);
