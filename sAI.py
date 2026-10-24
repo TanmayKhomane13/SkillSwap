@@ -15,6 +15,11 @@ import json
 from langchain_core.tools import tool
 from vector_store import vector_store
 
+# ============== RAG Retriever ==========
+profile_retriever = vector_store.as_retriever(
+    search_kwargs={"k": 5}
+)
+
 #========= MODEL PATHS & DEVICE =========
 
 BASE_MODEL_NAME = "distilbert-base-uncased"
@@ -108,57 +113,72 @@ def classify_intent(message: str) -> dict:
 #========= PROMPT BUILDER =========
 def prompt_builder(intent):
 
+    
     if intent == "AUTOMATION":
-        return """
-    You are sAI, the SkillSwap assistant.
-
-    For skill-exchange searches, extract both skills from the user's message:
-    - teach_skill: the skill the user offers to teach
-    - want_skill: the skill the user wants to learn
-
-    Return valid JSON only, without Markdown code fences.
-
-    Example:
-    User: I want to teach Unity Game Development in exchange for Python.
-
-    {
-    "tool": "search_profiles",
-    "arguments": {
-        "teach_skill": "Unity Game Development",
-        "want_skill": "Python"
-    }
-    }
-
-    Use the actual skills from the user's message.
-    Do not invent missing skills.
-    Do not include current_user_id; the application supplies it.
-
-    If either skill is missing, return:
-    {
-    "tool": null,
-    "answer": "Which skill would you like to teach, and which skill would you like to learn?"
-    }
-    """
-
-    elif intent == "PROFILE_QUERY":
         return """
         You are sAI, the SkillSwap assistant.
 
-        Use get_profile to answer questions about a specific user's
-        profile using retrieved profile information through RAG.
+        Your task is to interpret skill-exchange search requests.
 
-        Do not invent profile information.
+        Extract:
+        - teach_skill: skill or skills the current user offers to teach
+        - want_skill: skill or skills the current user wants to learn
 
-        Return valid JSON only.
-        For a tool:
-        {"tool": "get_profile", "arguments": {
-            "user_name": "...",
-            "question": "..."
-        }}
+        IMPORTANT:
+        - "I can teach", "my skills", and "I offer" indicate teach_skill.
+        - "I want to learn", "teach me", and "can teach me" indicate want_skill.
+        - "in exchange for", "in exchange of", and "in return for"
+          identify the skills offered as an exchange.
+        - Support multiple skills in either field.
+        - Preserve every explicitly mentioned skill.
+        - Do not reverse the direction of the exchange.
+        - Do not invent skills.
+        - Do not require the user to repeat information already provided.
+        - Do not include current_user_id; the application supplies it.
 
-        For a direct answer:
-        {"tool": null, "answer": "..."}
+        Return valid JSON only, without Markdown code fences.
+
+        Example:
+        User: Find people who can teach me Python and Machine Learning
+        in exchange for my UI/UX skills.
+
+        {
+            "tool": "search_profiles",
+            "arguments": {
+                "teach_skill": "UI/UX",
+                "want_skill": "Python and Machine Learning"
+            }
+        }
+
+        If the user has not specified the skills needed for a meaningful
+        search, ask a concise clarification question.
+
+        {
+            "tool": null,
+            "answer": "Which skill or skills would you like to teach,
+            and which skill or skills would you like to learn?"
+        }
         """
+
+    elif intent == "PROFILE_QUERY":
+        return """
+        You are sAI, the SkillSwap profile assistant.
+
+        Answer the user's question using only the retrieved profile
+        information provided in the conversation.
+
+        Rules:
+        - Answer clearly and naturally.
+        - Use only facts supported by the retrieved information.
+        - Never invent skills, experience, availability, or ratings.
+        - If the requested information is missing, say it is not
+          available in the retrieved profile information.
+        - If no relevant profile information was retrieved, explain
+          that you could not find the required profile information.
+        - Do not claim to have performed an action.
+        - Do not generate JSON or select tools.
+        """
+
 
     else:  # GENERAL
         return """
@@ -294,6 +314,36 @@ def generate_response(messages, max_new_tokens=200):
     return response.strip()
 
 
+#========= PROFILE RAG =========
+
+def generate_rag_answer(
+    question: str,
+    retrieved_guidance: str,
+    system_prompt: str,
+) -> str:
+    """Generate a profile answer grounded in retrieved ChromaDB data."""
+
+    messages = [
+        {
+            "role": "system",
+            "content": system_prompt,
+        },
+        {
+            "role": "user",
+            "content": (
+                f"User question:\n{question}\n\n"
+                f"Retrieved profile information:\n"
+                f"{retrieved_guidance}"
+            ),
+        },
+    ]
+
+    return generate_response(
+        messages,
+        max_new_tokens=200,
+    )
+
+
 def handle_message(message: str, current_user_id: str):
     # 1. Classify the user's intent.
     classification = classify_intent(message)
@@ -315,11 +365,58 @@ def handle_message(message: str, current_user_id: str):
     ]
 
     try:
-        # 3. Ask Qwen to select a tool or answer directly.
+        #========= PROFILE RAG PATH =========
+        if intent == "PROFILE_QUERY":
+
+            # 1. Retrieve relevant profile documents from ChromaDB.
+            retrieved_documents = profile_retriever.invoke(message)
+
+            # 2. Prepare the retrieved context.
+            retrieved_guidance = "\n\n".join(
+                (
+                    f"Profile name: {doc.metadata.get('name', 'Unknown')}\n"
+                    f"{doc.page_content}"
+                )
+                for doc in retrieved_documents
+            )
+
+            # 3. Handle empty retrieval.
+            if not retrieved_guidance.strip():
+                return {
+                    "intent": intent,
+                    "confidence": confidence,
+                    "tool": None,
+                    "answer": (
+                        "I couldn't find relevant profile information "
+                        "to answer your question."
+                    ),
+                    "profiles": [],
+                }
+
+            # 4. Select the RAG prompt.
+            system_prompt = prompt_builder(intent)
+
+            # 5. Generate a grounded natural-language answer.
+            answer = generate_rag_answer(
+                question=message,
+                retrieved_guidance=retrieved_guidance,
+                system_prompt=system_prompt,
+            )
+
+            # 6. Return the existing application response structure.
+            return {
+                "intent": intent,
+                "confidence": confidence,
+                "tool": None,
+                "answer": answer,
+                "profiles": [],
+            }
+        
         response = generate_response(
             messages,
             max_new_tokens=200,
         )
+        # ============================================  
 
         # 4. Parse the JSON decision.
         decision = json.loads(response)
