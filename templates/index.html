@@ -88,8 +88,8 @@
         </button>
 
         <!-- FIX #4: Sleek Circular AI Copilot Drawer Toggle Button -->
-        <button type="button" class="btn-ai-toggle" id="btnAiToggle" onclick="toggleAiDrawer()" title="Open AI Copilot"
-          aria-label="Open AI Copilot">
+        <button type="button" class="btn-ai-toggle" id="btnAiToggle" onclick="toggleAiDrawer()" title="Open sAI"
+          aria-label="Open sAI">
           <span class="ai-dot-indicator"></span>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polygon
@@ -517,7 +517,7 @@
       <div class="ai-drawer-header">
         <div class="ai-drawer-title">
           <div class="ai-dot-indicator" style="position: static; display: inline-block;"></div>
-          <span>SkillSwap AI Copilot</span>
+          <span>sAI</span>
         </div>
         <button type="button" class="ai-drawer-close" onclick="closeAiDrawer()" aria-label="Close AI Drawer">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -532,30 +532,14 @@
       </div>
 
       <div class="ai-drawer-footer">
-        <!-- Quick Prompt Suggestions -->
-        <div class="ai-prompt-pills-row">
-          <button type="button" class="ai-drawer-prompt-btn"
-            onclick="sendAiPrompt('Find someone who can teach Figma on weekends')">
-            🎨 "Find someone who teaches Figma on weekends"
-          </button>
-          <button type="button" class="ai-drawer-prompt-btn"
-            onclick="sendAiPrompt('Show all my pending swap requests')">
-            🔄 "Summarize my pending swap requests"
-          </button>
-          <button type="button" class="ai-drawer-prompt-btn"
-            onclick="sendAiPrompt('Who is my highest compatibility dual-swap match?')">
-            ⚡ "Find best reciprocal match for me"
-          </button>
-        </div>
-
         <form class="ai-drawer-input-row" style="margin-top: 10px;" onsubmit="handleAiChatSubmit(event)">
           <input type="text" id="aiChatInput" class="glass-input ai-drawer-input"
             placeholder="Ask AI to find swappers or automate..." autocomplete="off">
-          <button type="submit" class="btn btn-primary"
-            style="height: 44px; width: 44px; border-radius: 50%; padding: 0;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="22" y1="2" x2="11" y2="13"></line>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          <button type="submit" class="ai-send-btn" aria-label="Send message" title="Send">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5"></line>
+              <polyline points="5 12 12 5 19 12"></polyline>
             </svg>
           </button>
         </form>

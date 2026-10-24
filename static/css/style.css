@@ -1275,6 +1275,96 @@ select.glass-input option {
   font-size: 0.88rem;
 }
 
+/* Composer: one rounded white pill with the send button inside it */
+.ai-drawer-input-row {
+  background: #ffffff;
+  border: 1px solid rgba(109, 59, 107, 0.14);
+  border-radius: var(--radius-pill);
+  padding: 5px 5px 5px 8px;
+  gap: 6px;
+  box-shadow: 0 4px 14px rgba(31, 38, 135, 0.06);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.ai-drawer-input-row:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(109, 59, 107, 0.14), 0 4px 14px rgba(31, 38, 135, 0.06);
+}
+
+.ai-drawer-input-row .ai-drawer-input,
+.ai-drawer-input-row .ai-drawer-input:focus {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 8px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.ai-send-btn {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--primary) 0%, #a855f7 100%);
+  box-shadow: 0 4px 12px rgba(109, 59, 107, 0.35);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.ai-send-btn:hover {
+  transform: translateY(-1px) scale(1.06);
+  box-shadow: 0 6px 16px rgba(109, 59, 107, 0.45);
+}
+
+.ai-send-btn:active {
+  transform: scale(0.93);
+}
+
+/* Dim the send button while the box is empty */
+.ai-drawer-input-row:has(.ai-drawer-input:placeholder-shown) .ai-send-btn {
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+/* Chat bubbles (white chat surface, soft plum AI bubbles, gradient user bubbles) */
+.ai-msg {
+  display: flex;
+  gap: 10px;
+  max-width: 88%;
+}
+
+.ai-msg-ai { align-self: flex-start; }
+.ai-msg-user { align-self: flex-end; }
+
+.ai-msg-bubble {
+  padding: 12px 16px;
+  border-radius: 18px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.ai-msg-ai .ai-msg-bubble {
+  background: #f5f1f7;
+  border: 1px solid rgba(109, 59, 107, 0.08);
+  color: var(--text-main);
+  border-bottom-left-radius: 6px;
+}
+
+.ai-msg-user .ai-msg-bubble {
+  background: linear-gradient(135deg, var(--primary) 0%, #8b4f89 100%);
+  color: #ffffff;
+  border-bottom-right-radius: 6px;
+}
+
 .ai-prompt-pills-row {
   display: flex;
   flex-direction: column;
@@ -1338,9 +1428,12 @@ select.glass-input option {
   letter-spacing: -0.025em;
 }
 
+/* Search bar is hidden on the dashboard, so only the two filter dropdowns remain.
+   (The search markup stays in index.html so script.js hooks keep working.) */
 .search-controls-row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: auto auto;
+  justify-content: start;
   gap: 12px;
   align-items: center;
   margin-bottom: 14px;
@@ -1348,7 +1441,7 @@ select.glass-input option {
 
 .search-input-wrapper {
   position: relative;
-  display: flex;
+  display: none; /* hidden: was display:flex */
   align-items: center;
 }
 
@@ -1422,7 +1515,7 @@ select.glass-input option {
 /* Minimal, Airy Explore Cards Grid */
 .profiles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(295px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: 16px;
 }
 
@@ -1548,17 +1641,26 @@ select.glass-input option {
 .card-footer-clean {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding-top: 8px;
 }
 
 .btn-propose-swap {
   flex: 1;
+  min-width: 0; /* let the button shrink instead of pushing the icons out of the card */
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.btn-propose-swap span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .btn-card-action {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -2059,4 +2161,114 @@ input:checked + .toggle-slider:before {
   .navbar { padding: 12px 18px; }
   .navbar.scrolled { width: 95%; padding: 10px 18px; }
   .nav-pills-container { display: none; }
+}
+
+/* ==========================================================================
+   ALWAYS-OPEN AI COPILOT DOCK (DESKTOP)
+   script.js adds body.ai-docked when the viewport is >= 1100px wide.
+   The navbar stays full width on top; the Copilot is a rounded frosted-glass
+   card docked on the right, directly below it. Page content makes room.
+   Below 1100px the original slide-over drawer + toggle button is used.
+   ========================================================================== */
+@media (min-width: 1100px) {
+  body.ai-docked {
+    --dock-w: clamp(340px, 27vw, 410px);
+    padding-right: calc(var(--dock-w) + 32px);
+  }
+
+  /* Dock: sits below the navbar and floats with a gap on every side */
+  body.ai-docked .right-panels-dock {
+    top: 90px;
+    right: 16px;
+    bottom: 16px;
+    width: var(--dock-w);
+    max-width: none;
+    z-index: 900; /* below navbar (1000), modals (1200) and toasts (2500) */
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Each panel is a rounded glass card that picks up the page background */
+  body.ai-docked .dock-panel {
+    background: rgba(255, 255, 255, 0.38);
+    backdrop-filter: blur(22px) saturate(1.2);
+    -webkit-backdrop-filter: blur(22px) saturate(1.2);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 26px;
+    box-shadow: 0 14px 40px rgba(31, 38, 135, 0.10);
+  }
+
+  body.ai-docked .panel-header,
+  body.ai-docked .ai-drawer-header {
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+  }
+
+  /* The chat itself sits on a white, rounded surface inside the glass card */
+  body.ai-docked .ai-drawer-body {
+    background: #ffffff;
+    margin: 12px 14px 0;
+    border-radius: 20px;
+    border: 1px solid rgba(109, 59, 107, 0.08);
+    box-shadow: 0 4px 16px rgba(31, 38, 135, 0.05);
+  }
+
+  body.ai-docked .member-profile-body {
+    background: #ffffff;
+    margin: 12px 14px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(109, 59, 107, 0.08);
+    box-shadow: 0 4px 16px rgba(31, 38, 135, 0.05);
+  }
+
+  body.ai-docked .ai-drawer-footer {
+    background: transparent;
+    border-top: none;
+    padding: 12px 14px 14px;
+  }
+
+  /* Keep "Propose Swap" visible even when the profile has to scroll */
+  body.ai-docked .member-profile-actions {
+    position: sticky;
+    bottom: -18px;       /* cancel the body's bottom padding so nothing peeks out underneath */
+    background: #ffffff;
+    padding-bottom: 18px;
+  }
+
+  /* Member profile (when open) stacks above the Copilot; Copilot takes the rest */
+  body.ai-docked .right-panels-dock.stacked #memberProfilePanel {
+    flex: 0 1 auto;      /* as tall as its content... */
+    max-height: 58%;     /* ...up to 58% of the dock, then it scrolls */
+  }
+
+  body.ai-docked .right-panels-dock.stacked #aiDrawer {
+    flex: 1 1 0;
+    min-height: 0;
+    max-height: none;
+  }
+
+  /* Nothing to open or close any more */
+  body.ai-docked .btn-ai-toggle,
+  body.ai-docked .ai-drawer-close,
+  body.ai-docked .ai-drawer-overlay {
+    display: none !important;
+  }
+
+  /* Keep toasts clear of the dock */
+  body.ai-docked .toast-container {
+    right: calc(var(--dock-w) + 40px);
+  }
+}
+
+/* Hide sAI on the profile page */
+body.on-profile-view .right-panels-dock,
+body.on-profile-view .btn-ai-toggle,
+body.on-profile-view .ai-drawer-overlay {
+  display: none !important;
+}
+@media (min-width: 1100px) {
+  body.ai-docked.on-profile-view {
+    padding-right: 0;
+  }
 }

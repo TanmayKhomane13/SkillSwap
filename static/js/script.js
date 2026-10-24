@@ -229,12 +229,7 @@ const AppState = {
   isAiDrawerOpen: false,
   isMemberProfileOpen: false,
   activeMemberProfileId: null,
-  chatMessages: [
-    {
-      sender: 'ai',
-      text: "Hello Alex! I am your SkillSwap AI Copilot. I can find complementary partners, draft swap proposals, or summarize user profiles using RAG intelligence. How can I assist you today?"
-    }
-  ]
+  chatMessages: []
 };
 
 function saveStateToStorage() {
@@ -294,6 +289,7 @@ window.addEventListener('DOMContentLoaded', handleNavbarScroll);
 
 function navigateTo(viewId) {
   AppState.currentView = viewId;
+  document.body.classList.toggle('on-profile-view', viewId === 'profile');
 
   // Update center navigation pills
   const activeBtn = document.getElementById(`navBtn-${viewId}`);
@@ -429,7 +425,31 @@ function updateRightPanelsLayout() {
   dock.className = classes.join(' ');
 }
 
+// --- Always-open Copilot dock (desktop). Keep the query in sync with the
+// @media (min-width: 1100px) block in style.css.
+const AI_DOCK_MEDIA = window.matchMedia('(min-width: 1100px)');
+
+function isAiDocked() {
+  return document.body.classList.contains('ai-docked');
+}
+
+function syncAiDock() {
+  if (!document.getElementById('rightPanelsDock')) return; // pages without the dock
+  document.body.classList.toggle('ai-docked', AI_DOCK_MEDIA.matches);
+  if (AI_DOCK_MEDIA.matches) {
+    openAiDrawer();
+  } else {
+    closeAiDrawer();
+  }
+}
+
 function toggleAiDrawer() {
+  if (isAiDocked()) {
+    // Already open: just put the cursor in the chat box
+    const input = document.getElementById('aiChatInput');
+    if (input) input.focus();
+    return;
+  }
   if (AppState.isAiDrawerOpen) {
     closeAiDrawer();
   } else {
@@ -444,6 +464,7 @@ function openAiDrawer() {
 }
 
 function closeAiDrawer() {
+  if (isAiDocked()) return; // the docked Copilot stays open
   AppState.isAiDrawerOpen = false;
   updateRightPanelsLayout();
 }
@@ -532,8 +553,8 @@ function renderAiDrawerMessages() {
   if (!container) return;
 
   container.innerHTML = AppState.chatMessages.map(msg => `
-    <div style="display: flex; gap: 10px; align-self: ${msg.sender === 'ai' ? 'flex-start' : 'flex-end'}; max-width: 85%;">
-      <div style="padding: 12px 16px; border-radius: 16px; font-size: 0.88rem; line-height: 1.45; ${msg.sender === 'ai' ? 'background: rgba(255,255,255,0.9); border: 1px solid rgba(255,255,255,0.95); color: var(--text-main);' : 'background: var(--primary); color: white;'}">
+    <div class="ai-msg ${msg.sender === 'ai' ? 'ai-msg-ai' : 'ai-msg-user'}">
+      <div class="ai-msg-bubble">
         ${msg.text}
         ${msg.actionsHtml ? msg.actionsHtml : ''}
       </div>
@@ -559,18 +580,18 @@ async function handleAiChatSubmit(e) {
   input.value = '';
   renderAiDrawerMessages();
 
-  setTimeout(() => {
-    const reply = generateAiCopilotResponse(userText);
-    AppState.chatMessages.push(reply);
-    renderAiDrawerMessages();
-  }, 450);
 }
 
 function generateAiCopilotResponse(query) {
   const q = query.toLowerCase();
+  // Chatbot should only use real data, not the demo seed members/swaps
+  const demoUserIds = SEED_USERS.map(u => u.id);
+  const demoSwapIds = SEED_SWAPS.map(sw => sw.id);
+  const realUsers = AppState.users.filter(u => !demoUserIds.includes(u.id));
+  const realSwaps = AppState.swaps.filter(sw => !demoSwapIds.includes(sw.id));
 
   if (q.includes('figma') || q.includes('design')) {
-    const matched = AppState.users.filter(u => u.skillsOffered.some(s => s.toLowerCase().includes('figma')));
+    const matched = realUsers.filter(u => u.skillsOffered.some(s => s.toLowerCase().includes('figma')));
     return {
       sender: 'ai',
       text: `🎨 Found <strong>${matched.length} swappers</strong> teaching Figma UI/UX:`,
@@ -593,7 +614,7 @@ function generateAiCopilotResponse(query) {
   }
 
   if (q.includes('pending') || q.includes('my swaps')) {
-    const pendingIncoming = AppState.swaps.filter(s => s.type === 'incoming' && s.status === 'pending');
+    const pendingIncoming = realSwaps.filter(s => s.type === 'incoming' && s.status === 'pending');
     return {
       sender: 'ai',
       text: `🔄 You have <strong>${pendingIncoming.length} pending incoming requests</strong>. Top request: <strong>${pendingIncoming[0] ? pendingIncoming[0].partnerName : 'None'}</strong> offering <em>${pendingIncoming[0] ? pendingIncoming[0].skillOfferedToUser : ''}</em>.`
@@ -603,13 +624,7 @@ function generateAiCopilotResponse(query) {
   if (q.includes('match') || q.includes('reciprocal')) {
     return {
       sender: 'ai',
-      text: `⚡ Your highest mutual match is <strong>Elena Rostova</strong> (98% Compatibility)! She wants to learn <em>Python Programming</em> and teaches <em>Figma UI/UX</em>.`,
-      actionsHtml: `
-        <div style="margin-top: 8px; display: flex; gap: 8px;">
-          <button type="button" class="btn btn-glass btn-sm" onclick="openPublicMemberProfile('usr_2')">View Elena's Profile</button>
-          <button type="button" class="btn btn-primary btn-sm" onclick="openSwapRequestModal('usr_2');">Propose Swap</button>
-        </div>
-      `
+      text: `Check the Matches tab to see your best reciprocal matches.`
     };
   }
 
@@ -1348,6 +1363,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  syncAiDock();
+  AI_DOCK_MEDIA.addEventListener('change', syncAiDock);
 
   updateNavbarUserSnippet();
   if (document.getElementById('profilesGrid')) {
