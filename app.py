@@ -23,6 +23,8 @@ from flask import (
 from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from vector_store import store_profile
+
 # ---------------------------------------------------------------------
 # Settings
 # ---------------------------------------------------------------------
@@ -241,6 +243,13 @@ def auth_register():
             (name, email, generate_password_hash(password), bio,
              json.dumps(skills), experience, availability),
         )
+        new_row = fetch_one(f"SELECT {USER_COLUMNS} FROM users WHERE id = ?", (user_id,))
+        if new_row:
+            try:
+                store_profile(new_row)
+            except Exception as e:
+                # Do not fail the registration if vector store has a temporary problem
+                print(f"[vector_store] failed to store new user {user_id}: {e}")      
     except sqlite3.IntegrityError:
         return error("User with this email already exists", 409)
 
@@ -322,6 +331,13 @@ def update_profile():
         (name, bio, experience, availability,
          json.dumps(offered), json.dumps(wanted), row["id"]),
     )
+
+    updated_row = fetch_one(f"SELECT {USER_COLUMNS} FROM users WHERE id = ?", (row["id"],))
+    if updated_row:
+        try:
+            store_profile(updated_row)
+        except Exception as e:
+            print(f"[vector_store] failed to update user {row['id']}: {e}")
 
     updated = current_user()
     return jsonify({"message": "Profile updated successfully", "user": user_to_json(updated)})
