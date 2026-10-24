@@ -74,23 +74,6 @@
           Account</button>
       </div>
 
-      <!-- Prominent Continue with Google OAuth Button -->
-      <button type="button" class="btn-google" id="googleOAuthBtn" onclick="handleGoogleOAuth()">
-        <svg class="google-icon-svg" viewBox="0 0 24 24">
-          <path fill="#EA4335"
-            d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z" />
-          <path fill="#4285F4"
-            d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z" />
-          <path fill="#FBBC05"
-            d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.2s.7 5.5 1.9 7.9l3.7-2.9c-.3-.8-.5-1.6-.5-2.4z" />
-          <path fill="#34A853"
-            d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2-6.4-4.8L1.9 16.9C3.7 20.6 7.5 23.5 12 23.5z" />
-        </svg>
-        <span>Continue with Google</span>
-      </button>
-
-      <div class="auth-divider">or with email</div>
-
       <!-- USER LOGIN FORM -->
       <form id="userLoginForm" onsubmit="handleUserLogin(event)">
         <div class="form-group">
@@ -128,7 +111,36 @@
         <div class="form-group">
           <label class="form-label" for="regPassword">Password</label>
           <input type="password" id="regPassword" name="new-password" class="glass-input"
-            placeholder="Create a password" required minlength="6" autocomplete="new-password">
+            placeholder="Create a password" required minlength="8" maxlength="128"
+            pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,128}"
+            title="At least 8 characters with an uppercase letter, a lowercase letter, a number and a special character"
+            autocomplete="new-password">
+          <p style="font-size: 0.76rem; color: var(--text-muted); margin-top: 4px;">
+            Min 8 characters: uppercase, lowercase, number and special character.
+          </p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="regBio">Short Bio</label>
+          <textarea id="regBio" name="bio" class="glass-textarea" rows="2"
+            placeholder="Tell others a little about yourself..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="regExperience">Experience Level</label>
+          <select id="regExperience" name="experience" class="glass-input"
+            style="height: 48px; border-radius: var(--radius-pill);">
+            <option value="Beginner">Beginner</option>
+            <option value="Intermediate">Intermediate</option>
+            <option value="Advanced">Advanced</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="regAvailability">Availability</label>
+          <select id="regAvailability" name="availability" class="glass-input"
+            style="height: 48px; border-radius: var(--radius-pill);">
+            <option value="Weekends">Weekends</option>
+            <option value="Weekday Evenings">Weekday Evenings</option>
+            <option value="Custom Availability">Flexible / Custom</option>
+          </select>
         </div>
         <div class="form-group">
           <label class="form-label" for="regSkillsOffered">Top Skill You Can Teach</label>
@@ -192,7 +204,6 @@
     const API_ROUTES = {
       userLogin: '/api/auth/login',
       userRegister: '/api/auth/register',
-      googleOAuth: '/auth/google',
       adminLogin: '/api/auth/admin-login'
     };
 
@@ -257,14 +268,7 @@
       }
     }
 
-    // Google OAuth Handler
-// Google OAuth Handler - Redirects to real Flask Google OAuth route
-    function handleGoogleOAuth() {
-      showToast('Redirecting to Google Sign-In...', 'info');
-      window.location.href = API_ROUTES.googleOAuth;
-    }
-
-    // Real User Login via MongoDB Backend
+    // User Login
     async function handleUserLogin(e) {
       e.preventDefault();
       const email = document.getElementById('userEmail').value.trim();
@@ -296,21 +300,24 @@
       }
     }
 
-    // Real User Registration via MongoDB Backend
+    // User Registration
     async function handleUserRegister(e) {
       e.preventDefault();
       const name = document.getElementById('regName').value.trim();
       const email = document.getElementById('regEmail').value.trim();
       const password = document.getElementById('regPassword').value;
       const skill = document.getElementById('regSkillsOffered').value.trim() || 'General Mentorship';
+      const bio = document.getElementById('regBio').value.trim();
+      const experience = document.getElementById('regExperience').value;
+      const availability = document.getElementById('regAvailability').value;
 
-      showToast('Registering user account on MongoDB...', 'info');
+      showToast('Creating your account...', 'info');
 
       try {
         const res = await fetch(API_ROUTES.userRegister, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, password, skill })
+          body: JSON.stringify({ name, email, password, bio, experience, availability, skill })
         });
         const data = await res.json();
 
@@ -321,7 +328,7 @@
 
         localStorage.setItem('skillswap_user', JSON.stringify(data.user));
         localStorage.setItem('skillswap_role', 'user');
-        showToast('Account created in MongoDB! Loading dashboard...', 'success');
+        showToast('Account created! Loading dashboard...', 'success');
         setTimeout(() => {
           window.location.href = '/';
         }, 500);
@@ -339,7 +346,7 @@
       showToast('Verifying Administrator credentials...', 'info');
 
       try {
-        const res = await fetch(API_ROUTES.userLogin, {
+        const res = await fetch(API_ROUTES.adminLogin, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
@@ -354,7 +361,7 @@
             window.location.href = '/admin';
           }, 500);
         } else {
-          showToast('Invalid Admin credentials (Try: admin@skillswap.com)', 'error');
+          showToast(data.error || 'Invalid Admin credentials', 'error');
         }
       } catch (err) {
         showToast('Error connecting to server', 'error');

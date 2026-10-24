@@ -3,7 +3,7 @@
  * SKILLSWAP PLATFORM - SCRIPT.JS (FRONTEND CONTROLLER & STATE STORE)
  * ==========================================================================
  * Strictly Vanilla ES6+ (No external frameworks)
- * Modular architecture prepared for Python Flask + MongoDB + Google OAuth
+ * Modular architecture prepared for Python Flask + SQLite
  */
 
 // ==========================================================================
@@ -15,7 +15,6 @@ const CONFIG = {
   ENDPOINTS: {
     LOGIN: '/api/auth/login',
     REGISTER: '/api/auth/register',
-    GOOGLE_OAUTH: '/auth/google',
     GET_PROFILE: '/api/profile',
     UPDATE_PROFILE: '/api/profile/update',
     GET_USERS: '/api/users',
@@ -42,7 +41,8 @@ const DEFAULT_CURRENT_USER = {
   headline: 'Senior Python & Backend Developer',
   bio: 'Senior Python Developer with 5+ years building APIs, microservices, and databases. Passionate about learning UI/UX design and pottery!',
   visibility: 'public',
-  availability: ['Weekends', 'Weekday Evenings'],
+  availability: 'Weekends',
+  experience: 'Advanced',
   skillsOffered: ['Python Programming', 'Flask Web Dev', 'SQL & Databases'],
   skillsOfferedDesc: {
     'Python Programming': 'Full-stack Python scripting, API architecture, and database automation.',
@@ -978,9 +978,10 @@ function syncProfileFormData() {
   document.getElementById('profileLocation').value = user.location || '';
   document.getElementById('profileBio').value = user.bio || '';
 
-  document.querySelectorAll('input[name="availability"]').forEach(cb => {
-    cb.checked = user.availability.includes(cb.value);
-  });
+  // Older saved data stored availability as a list; the dropdown needs one value
+  const availability = Array.isArray(user.availability) ? user.availability[0] : user.availability;
+  document.getElementById('profileAvailability').value = availability || 'Weekends';
+  document.getElementById('profileExperience').value = user.experience || 'Beginner';
 
   renderEditableSkillTags('offered');
   renderEditableSkillTags('wanted');
@@ -995,16 +996,31 @@ function toggleVisibility(checkbox) {
   showToast(`Profile visibility: ${AppState.currentUser.visibility}`, 'info');
 }
 
-function promptAvatarUrl() {
-  const current = AppState.currentUser.avatar;
-  const newUrl = prompt("Enter a profile photo image URL:", current);
-  if (newUrl && newUrl.trim() !== '') {
-    AppState.currentUser.avatar = newUrl.trim();
-    document.getElementById('sidebarAvatarPreview').src = AppState.currentUser.avatar;
-    document.getElementById('navUserAvatar').src = AppState.currentUser.avatar;
+async function uploadProfilePic(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('photo', file);
+
+  try {
+    const res = await fetch('/api/profile/picture', { method: 'POST', body: formData });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showToast(data.error || 'Photo upload failed', 'error');
+      return;
+    }
+
+    AppState.currentUser.avatar = data.avatar;
+    document.getElementById('sidebarAvatarPreview').src = data.avatar;
+    document.getElementById('navUserAvatar').src = data.avatar;
     saveStateToStorage();
     showToast('Profile photo updated!', 'success');
+  } catch (err) {
+    showToast('Server error uploading photo', 'error');
   }
+  input.value = '';
 }
 
 function renderEditableSkillTags(type) {
@@ -1044,15 +1060,39 @@ function addSkillTag(type, skillName) {
   }
 }
 
-function saveUserProfile(e) {
+async function saveUserProfile(e) {
   e.preventDefault();
-  AppState.currentUser.name = document.getElementById('profileFullName').value.trim();
-  AppState.currentUser.location = document.getElementById('profileLocation').value.trim();
-  AppState.currentUser.bio = document.getElementById('profileBio').value.trim();
+  const user = AppState.currentUser;
 
-  const selectedAvail = [];
-  document.querySelectorAll('input[name="availability"]:checked').forEach(cb => selectedAvail.push(cb.value));
-  AppState.currentUser.availability = selectedAvail;
+  user.name = document.getElementById('profileFullName').value.trim();
+  user.location = document.getElementById('profileLocation').value.trim();
+  user.bio = document.getElementById('profileBio').value.trim();
+  user.experience = document.getElementById('profileExperience').value;
+  user.availability = document.getElementById('profileAvailability').value;
+
+  try {
+    const res = await fetch(CONFIG.ENDPOINTS.UPDATE_PROFILE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: user.name,
+        bio: user.bio,
+        experience: user.experience,
+        availability: user.availability,
+        skillsOffered: user.skillsOffered,
+        skillsWanted: user.skillsWanted
+      })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showToast(data.error || 'Could not save profile', 'error');
+      return;
+    }
+  } catch (err) {
+    showToast('Server error saving profile', 'error');
+    return;
+  }
 
   saveStateToStorage();
   updateNavbarUserSnippet();
@@ -1240,6 +1280,17 @@ function handleReportSubmit(e) {
   const targetId = document.getElementById('reportTargetUserId').value;
   const targetUser = AppState.users.find(u => u.id === targetId) || { name: 'Reported User' };
 
+  // Save the report in the database (reports table)
+  fetch(CONFIG.ENDPOINTS.REPORT_CONTENT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      reported_user_id: targetId,
+      category: reason,
+      description: document.getElementById('reportDetails').value.trim()
+    })
+  }).catch(() => {});
+
   const currentMod = JSON.parse(localStorage.getItem('skillswap_moderation')) || [];
   currentMod.unshift({
     id: 'mod_' + Date.now(),
@@ -1261,6 +1312,20 @@ function handleReportSubmit(e) {
 // ==========================================================================
 // 12. INITIALIZATION
 // ==========================================================================
+// Replace the demo members with real users from the SQLite database
+async function loadUsersFromBackend() {
+  try {
+    const res = await fetch(CONFIG.ENDPOINTS.GET_USERS);
+    if (!res.ok) return;
+    const users = await res.json();
+    AppState.users = users.filter(u => u.id !== AppState.currentUser.id);
+    saveStateToStorage();
+    if (document.getElementById('profilesGrid')) renderExploreProfiles();
+  } catch (err) {
+    // Backend not running: keep the demo members
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const inputOffered = document.getElementById('inputOfferedTag');
   if (inputOffered) {
@@ -1287,5 +1352,6 @@ document.addEventListener('DOMContentLoaded', () => {
   updateNavbarUserSnippet();
   if (document.getElementById('profilesGrid')) {
     navigateTo(AppState.currentView);
+    loadUsersFromBackend();
   }
 });

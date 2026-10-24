@@ -1,102 +1,146 @@
+"""
+SkillSwap Flask backend (SQLite).
 
+Setup:
+    pip install flask flask-cors
+    python seed_db.py      # creates skillswap.db with tables + demo data
+    python app.py
+"""
+
+import hashlib
+import io
+import json
 import os
 import re
-from datetime import datetime, timezone
+import sqlite3
+import time
 from functools import wraps
+from pathlib import Path
 
-from bson import ObjectId
-from dotenv import load_dotenv
 from flask import (
-    Flask,
-    jsonify,
-    redirect,
-    render_template,
-    request,
-    session,
-    url_for,
+    Flask, jsonify, redirect, render_template, request, send_file, session, url_for,
 )
 from flask_cors import CORS
-from pymongo import MongoClient
-from pymongo.errors import PyMongoError
-
-load_dotenv()
+from werkzeug.security import check_password_hash, generate_password_hash
 
 # ---------------------------------------------------------------------
-# Flask setup
+# Settings
 # ---------------------------------------------------------------------
+BASE_DIR = Path(__file__).resolve().parent
+DB_PATH = BASE_DIR / "skillswap.db"
 
-app = Flask(__name__)
-app.secret_key = os.getenv(
-    "SECRET_KEY",
-    "skillswap-local-development-only",
+# Dropdown values (the frontend <select> options must match these)
+EXPERIENCE_LEVELS = ("Beginner", "Intermediate", "Advanced")
+AVAILABILITY_OPTIONS = ("Weekends", "Weekday Evenings", "Custom Availability")
+REPORT_STATUSES = ("Open", "Under Review", "Resolved")
+# Allowed profile picture types (file extension -> content type)
+IMAGE_TYPES = {
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "webp": "image/webp",
+    "gif": "image/gif",
+}
+
+# Every users column EXCEPT the image bytes, so lists of users stay light.
+# has_pic is 1 when the user has uploaded a picture.
+USER_COLUMNS = (
+    "id, name, email, bio, skills_offered, skills_wanted, experience, "
+    "availability, rating, role, profile_pic IS NOT NULL AS has_pic"
 )
 
+# Shown when a user has not uploaded a profile picture
+DEFAULT_AVATAR = (
+    "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
+    "?w=200&auto=format&fit=crop&q=80"
+)
+
+app = Flask(__name__)
+# A new random key on every start: old login cookies stop working, so after
+# restarting the server everyone lands on the login page again.
+app.secret_key = os.urandom(24)
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
+    MAX_CONTENT_LENGTH=2 * 1024 * 1024,  # max upload size: 2 MB
 )
-
 CORS(app, supports_credentials=True)
 
 
-def now_utc():
-    return datetime.now(timezone.utc)
-
-
+# ---------------------------------------------------------------------
+# Small helpers
+# ---------------------------------------------------------------------
 def error(message, status=400):
     return jsonify({"error": message}), status
 
 
-# ---------------------------------------------------------------------
-# MongoDB setup
-# No automatic seeding. MongoDB operations connect when first needed.
-# ---------------------------------------------------------------------
-
-MONGO_URI = os.getenv(
-    "MONGO_URI",
-    "mongodb://127.0.0.1:27017/skillswap",
-)
-
-client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=2000)
-db = client.get_default_database()
-
-users_col = db["users"]
-swaps_col = db["swaps"]
-reviews_col = db["reviews"]
-
-# Keep the existing collection name if admin.html expects it.
-moderation_col = db["moderation"]
-broadcasts_col = db["broadcasts"]
+def get_json():
+    return request.get_json(silent=True) or {}
 
 
-# ---------------------------------------------------------------------
-# Shared helpers
-# ---------------------------------------------------------------------
-
-def serialize_doc(doc):
-    if doc is None:
-        return None
-
-    result = dict(doc)
-    mongo_id = result.pop("_id", None)
-
-    if "id" not in result and mongo_id is not None:
-        result["id"] = str(mongo_id)
-
-    return result
+def fetch_all(sql, args=()):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        return conn.execute(sql, args).fetchall()
+    finally:
+        conn.close()
 
 
-def find_user(user_id):
-    """Resolve either a custom string ID or MongoDB ObjectId."""
-    if not user_id:
-        return None
+def fetch_one(sql, args=()):
+    rows = fetch_all(sql, args)
+    return rows[0] if rows else None
 
-    conditions = [{"id": str(user_id)}]
 
-    if ObjectId.is_valid(str(user_id)):
-        conditions.append({"_id": ObjectId(str(user_id))})
+def execute(sql, args=()):
+    """Run INSERT / UPDATE. Returns the new row id (for INSERT)."""
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        cursor = conn.execute(sql, args)
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
 
-    return users_col.find_one({"$or": conditions})
+
+def password_problem(password):
+    """Return a message if the password is too weak, otherwise None."""
+    if not 8 <= len(password) <= 128:
+        return "Password must be 8 to 128 characters long"
+    if not re.search(r"[a-z]", password):
+        return "Password needs at least one lowercase letter"
+    if not re.search(r"[A-Z]", password):
+        return "Password needs at least one uppercase letter"
+    if not re.search(r"\d", password):
+        return "Password needs at least one number"
+    if not re.search(r"[^A-Za-z0-9]", password):
+        return "Password needs at least one special character (e.g. @ # $ !)"
+    return None
+
+
+def user_to_json(row):
+    """Turn a users row into the JSON shape the frontend expects."""
+    return {
+        "id": str(row["id"]),
+        "name": row["name"],
+        "email": row["email"],
+        "bio": row["bio"],
+        "role": row["role"],
+        "experience": row["experience"],
+        "availability": row["availability"],
+        "skillsOffered": json.loads(row["skills_offered"]),
+        "skillsWanted": json.loads(row["skills_wanted"]),
+        "rating": row["rating"],
+        "avatar": f"/api/users/{row['id']}/picture" if row["has_pic"] else DEFAULT_AVATAR,
+        # Not stored in the database; the frontend just needs a value
+        "location": "",
+        "visibility": "public",
+        "swapsCompleted": 0,
+    }
+
+
+def current_user():
+    return fetch_one(f"SELECT {USER_COLUMNS} FROM users WHERE id = ?", (session.get("user_id"),))
 
 
 def login_required(fn):
@@ -105,513 +149,303 @@ def login_required(fn):
         if not session.get("user_id"):
             return error("Login required", 401)
         return fn(*args, **kwargs)
-
     return wrapper
 
 
 def admin_required(fn):
     @wraps(fn)
-    @login_required
     def wrapper(*args, **kwargs):
-        user = find_user(session.get("user_id"))
-
-        if not user or user.get("role") != "admin":
+        if not session.get("admin_id"):
             return error("Admin access required", 403)
-
         return fn(*args, **kwargs)
-
     return wrapper
 
 
-def get_json():
-    return request.get_json(silent=True) or {}
-
-
-def valid_object_id(value):
-    return isinstance(value, str) and ObjectId.is_valid(value)
-
-
 # ---------------------------------------------------------------------
-# Frontend pages
+# Pages
 # ---------------------------------------------------------------------
-
 @app.route("/")
 @app.route("/index")
 @app.route("/index.html")
 def home():
     if not session.get("user_id"):
         return redirect(url_for("login"))
-
     return render_template("index.html")
 
 
 @app.route("/login")
 @app.route("/login.html")
 def login():
-    # Do not clear the session just because the login page was opened.
     return render_template("login.html")
 
 
 @app.route("/admin")
 @app.route("/admin.html")
 def admin():
-    if not session.get("user_id"):
+    if not session.get("admin_id"):
         return redirect(url_for("login"))
-
-    user = find_user(session.get("user_id"))
-
-    if not user or user.get("role") != "admin":
-        return error("Admin access required", 403)
-
     return render_template("admin.html")
 
 
 # ---------------------------------------------------------------------
-# Authentication
-# Demo-only email login; replace with password authentication later.
+# Auth
+# Passwords are stored hashed (users.password_hash), never as plain text.
 # ---------------------------------------------------------------------
-
 @app.route("/api/auth/login", methods=["POST"])
 def auth_login():
     data = get_json()
-    email = data.get("email")
+    email = str(data.get("email", "")).strip().lower()
+    password = str(data.get("password", ""))
 
-    if not isinstance(email, str) or not email.strip():
-        return error("Email is required")
+    account = fetch_one("SELECT id, password_hash FROM users WHERE email = ?", (email,))
 
-    try:
-        user = users_col.find_one(
-            {"email": email.strip().lower()}
-        )
+    # Same message for "no such email" and "wrong password" so nobody can guess which emails exist
+    if not account or not account["password_hash"] \
+            or not check_password_hash(account["password_hash"], password):
+        return error("Invalid email or password", 401)
 
-        if not user:
-            return error("User not found. Register or use a demo account.", 401)
-
-        user_clean = serialize_doc(user)
-        session["user_id"] = user_clean["id"]
-        session["user_email"] = user.get("email")
-
-        return jsonify({
-            "message": "Demo login successful",
-            "user": user_clean,
-        })
-
-    except PyMongoError:
-        app.logger.exception("Login database error")
-        return error("Database unavailable", 503)
+    session.clear()
+    session["user_id"] = account["id"]
+    row = fetch_one(f"SELECT {USER_COLUMNS} FROM users WHERE id = ?", (account["id"],))
+    return jsonify({"message": "Login successful", "user": user_to_json(row)})
 
 
 @app.route("/api/auth/register", methods=["POST"])
 def auth_register():
     data = get_json()
+    name = str(data.get("name", "")).strip()
+    email = str(data.get("email", "")).strip().lower()
+    password = str(data.get("password", ""))
+    bio = str(data.get("bio", "")).strip()
+    experience = data.get("experience", "Beginner")
+    availability = data.get("availability", "Weekends")
+    skills = [s.strip() for s in str(data.get("skill", "")).split(",") if s.strip()]
 
-    name = data.get("name")
-    email = data.get("email")
-
-    if not isinstance(name, str) or not name.strip():
+    if not name:
         return error("Name is required")
-
-    if not isinstance(email, str) or not re.fullmatch(
-        r"[^@\s]+@[^@\s]+\.[^@\s]+", email.strip()
-    ):
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
         return error("A valid email is required")
-
-    email = email.strip().lower()
+    problem = password_problem(password)
+    if problem:
+        return error(problem)
+    if experience not in EXPERIENCE_LEVELS:
+        return error("Experience must be one of: " + ", ".join(EXPERIENCE_LEVELS))
+    if availability not in AVAILABILITY_OPTIONS:
+        return error("Availability must be one of: " + ", ".join(AVAILABILITY_OPTIONS))
 
     try:
-        if users_col.find_one({"email": email}):
-            return error("User with this email already exists", 409)
+        user_id = execute(
+            """INSERT INTO users
+               (name, email, password_hash, bio, skills_offered, experience, availability)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (name, email, generate_password_hash(password), bio,
+             json.dumps(skills), experience, availability),
+        )
+    except sqlite3.IntegrityError:
+        return error("User with this email already exists", 409)
 
-        user = {
-            "name": name.strip(),
-            "email": email,
-            "role": "user",
-            "avatar": data.get("avatar", ""),
-            "location": data.get("location", "Remote"),
-            "bio": data.get("bio", ""),
-            "visibility": "public",
-            "availability": data.get("availability", ["Weekends"]),
-            "skillsOffered": (
-                [data["skill"]] if data.get("skill")
-                else ["General Mentorship"]
-            ),
-            "skillsWanted": ["Programming"],
-            "rating": 5.0,
-            "reviewCount": 0,
-            "swapsCompleted": 0,
-            "created_at": now_utc(),
-        }
+    session.clear()
+    session["user_id"] = user_id
+    row = fetch_one(f"SELECT {USER_COLUMNS} FROM users WHERE id = ?", (user_id,))
+    return jsonify({"message": "Registration successful", "user": user_to_json(row)}), 201
 
-        inserted = users_col.insert_one(user)
-        user["id"] = str(inserted.inserted_id)
 
-        session["user_id"] = user["id"]
-        session["user_email"] = email
+@app.route("/api/auth/admin-login", methods=["POST"])
+def auth_admin_login():
+    data = get_json()
+    email = str(data.get("email", "")).strip().lower()
+    password = str(data.get("password", ""))
 
-        return jsonify({
-            "message": "Registration successful",
-            "user": user,
-        }), 201
+    row = fetch_one("SELECT * FROM admin WHERE email = ?", (email,))
+    if not row or not check_password_hash(row["password_hash"], password):
+        return error("Invalid admin credentials", 401)
 
-    except PyMongoError:
-        app.logger.exception("Registration database error")
-        return error("Database unavailable", 503)
+    session.clear()
+    session["admin_id"] = row["id"]
+    admin_user = {"id": str(row["id"]), "name": row["name"], "email": row["email"], "role": "admin"}
+    return jsonify({"message": "Admin login successful", "user": admin_user})
 
 
 @app.route("/logout")
 @app.route("/api/auth/logout", methods=["GET", "POST"])
 def logout():
     session.clear()
-
     if request.path.startswith("/api/"):
         return jsonify({"message": "Logged out"})
-
     return redirect(url_for("login"))
 
 
 # ---------------------------------------------------------------------
-# Profiles
+# Profile
 # ---------------------------------------------------------------------
-
 @app.route("/api/profile", methods=["GET"])
 @login_required
 def get_profile():
-    try:
-        user = find_user(session.get("user_id"))
-
-        if not user:
-            session.clear()
-            return error("User not found", 404)
-
-        return jsonify(serialize_doc(user))
-
-    except PyMongoError:
-        app.logger.exception("Profile lookup failed")
-        return error("Database unavailable", 503)
+    row = current_user()
+    if not row:
+        session.clear()
+        return error("User not found", 404)
+    return jsonify(user_to_json(row))
 
 
 @app.route("/api/profile/update", methods=["POST"])
 @login_required
 def update_profile():
-    data = get_json()
-
-    # The logged-in user's session determines which profile can be edited.
-    user = find_user(session.get("user_id"))
-
-    if not user:
+    row = current_user()
+    if not row:
         return error("User not found", 404)
 
-    allowed_fields = (
-        "name",
-        "location",
-        "bio",
-        "visibility",
-        "availability",
-        "skillsOffered",
-        "skillsWanted",
+    data = get_json()
+
+    # Use the new value if it was sent, otherwise keep the current one
+    name = str(data.get("name") or row["name"]).strip()
+    bio = str(data.get("bio", row["bio"])).strip()
+    experience = data.get("experience", row["experience"])
+    availability = data.get("availability", row["availability"])
+    offered = data.get("skillsOffered", json.loads(row["skills_offered"]))
+    wanted = data.get("skillsWanted", json.loads(row["skills_wanted"]))
+
+    if not name:
+        return error("Name cannot be empty")
+    if experience not in EXPERIENCE_LEVELS:
+        return error("Experience must be one of: " + ", ".join(EXPERIENCE_LEVELS))
+    if availability not in AVAILABILITY_OPTIONS:
+        return error("Availability must be one of: " + ", ".join(AVAILABILITY_OPTIONS))
+    if not isinstance(offered, list) or not isinstance(wanted, list):
+        return error("Skills must be lists")
+
+    execute(
+        """UPDATE users
+           SET name = ?, bio = ?, experience = ?, availability = ?,
+               skills_offered = ?, skills_wanted = ?
+           WHERE id = ?""",
+        (name, bio, experience, availability,
+         json.dumps(offered), json.dumps(wanted), row["id"]),
     )
 
-    updates = {
-        field: data[field]
-        for field in allowed_fields
-        if field in data
-    }
-    updates["updated_at"] = now_utc()
+    updated = current_user()
+    return jsonify({"message": "Profile updated successfully", "user": user_to_json(updated)})
 
-    try:
-        users_col.update_one(
-            {"_id": user["_id"]},
-            {"$set": updates},
-        )
 
-        updated_user = users_col.find_one({"_id": user["_id"]})
+@app.route("/api/profile/picture", methods=["POST"])
+@login_required
+def upload_profile_picture():
+    file = request.files.get("photo")
 
-        return jsonify({
-            "message": "Profile updated successfully",
-            "user": serialize_doc(updated_user),
-        })
+    if not file or not file.filename:
+        return error("Please choose an image")
 
-    except PyMongoError:
-        app.logger.exception("Profile update failed")
-        return error("Database unavailable", 503)
+    ext = file.filename.rsplit(".", 1)[-1].lower()
+    if ext not in IMAGE_TYPES:
+        return error("Allowed image types: " + ", ".join(sorted(IMAGE_TYPES)))
+
+    # The image itself is saved inside the database as a BLOB
+    image_bytes = file.read()
+    execute(
+        "UPDATE users SET profile_pic = ?, profile_pic_type = ? WHERE id = ?",
+        (image_bytes, IMAGE_TYPES[ext], session["user_id"]),
+    )
+
+    # ?v=<time> makes the browser load the new image instead of a cached one
+    avatar = f"/api/users/{session['user_id']}/picture?v={int(time.time())}"
+    return jsonify({"message": "Profile picture updated", "avatar": avatar})
+
+
+@app.route("/api/users/<int:user_id>/picture")
+def get_profile_picture(user_id):
+    """Send the BLOB back as a normal image (used by <img src="...">)."""
+    row = fetch_one("SELECT profile_pic, profile_pic_type FROM users WHERE id = ?", (user_id,))
+    if not row or not row["profile_pic"]:
+        return redirect(DEFAULT_AVATAR)
+
+    return send_file(
+        io.BytesIO(row["profile_pic"]),
+        mimetype=row["profile_pic_type"],
+        etag=hashlib.md5(row["profile_pic"]).hexdigest(),
+        max_age=0,  # always re-check, so a new upload shows up right away
+    )
 
 
 # ---------------------------------------------------------------------
-# Public profile discovery
+# Browse users  (optional ?skill=python)
 # ---------------------------------------------------------------------
-
 @app.route("/api/users", methods=["GET"])
 def get_users():
-    skill = request.args.get("skill", "").strip()
-
-    query = {"visibility": "public"}
+    skill = request.args.get("skill", "").strip()[:100]
 
     if skill:
-        escaped_skill = re.escape(skill[:100])
-        query["$or"] = [
-            {"skillsOffered": {"$regex": escaped_skill, "$options": "i"}},
-            {"skillsWanted": {"$regex": escaped_skill, "$options": "i"}},
-        ]
-
-    try:
-        users = [
-            serialize_doc(user)
-            for user in users_col.find(query).limit(100)
-        ]
-        return jsonify(users)
-
-    except PyMongoError:
-        app.logger.exception("User search failed")
-        return error("Database unavailable", 503)
-
-
-# ---------------------------------------------------------------------
-# Swap requests
-# ---------------------------------------------------------------------
-
-@app.route("/api/swaps", methods=["GET"])
-@login_required
-def get_swaps():
-    user_id = session.get("user_id")
-
-    try:
-        swaps = swaps_col.find({
-            "$or": [
-                {"requester_id": user_id},
-                {"partner_id": user_id},
-                # Support legacy frontend documents using partnerId.
-                {"partnerId": user_id},
-            ]
-        }).limit(100)
-
-        return jsonify([serialize_doc(swap) for swap in swaps])
-
-    except PyMongoError:
-        app.logger.exception("Swap lookup failed")
-        return error("Database unavailable", 503)
-
-
-@app.route("/api/swaps/create", methods=["POST"])
-@login_required
-def create_swap():
-    data = get_json()
-
-    partner_id = data.get("partnerId")
-    if not partner_id:
-        return error("partnerId is required")
-
-    if str(partner_id) == str(session["user_id"]):
-        return error("You cannot create a swap with yourself")
-
-    try:
-        partner = find_user(str(partner_id))
-
-        if not partner or partner.get("visibility") != "public":
-            return error("Public partner profile not found", 404)
-
-        swap = {
-            "requester_id": session["user_id"],
-            "partner_id": str(partner_id),
-            "partnerId": str(partner_id),
-            "partnerName": partner.get("name", ""),
-            "skillWanted": data.get("skillWanted", ""),
-            "skillOffered": data.get("skillOffered", ""),
-            "message": data.get("message", ""),
-            "status": "pending",
-            "created_at": now_utc(),
-            "updated_at": now_utc(),
-        }
-
-        result = swaps_col.insert_one(swap)
-        swap["id"] = str(result.inserted_id)
-
-        return jsonify({
-            "message": "Swap request created",
-            "swap": swap,
-        }), 201
-
-    except PyMongoError:
-        app.logger.exception("Swap creation failed")
-        return error("Database unavailable", 503)
-
-
-@app.route("/api/swaps/<swap_id>/status", methods=["PATCH"])
-@login_required
-def update_swap_status(swap_id):
-    if not valid_object_id(swap_id):
-        return error("Invalid swap ID")
-
-    data = get_json()
-    status = data.get("status")
-
-    if status not in {"pending", "accepted", "rejected", "completed", "cancelled"}:
-        return error("Invalid swap status")
-
-    try:
-        swap = swaps_col.find_one({"_id": ObjectId(swap_id)})
-
-        if not swap:
-            return error("Swap not found", 404)
-
-        user_id = str(session["user_id"])
-        requester = str(swap.get("requester_id", ""))
-        partner = str(swap.get("partner_id", swap.get("partnerId", "")))
-
-        if user_id not in {requester, partner}:
-            return error("Not allowed to update this swap", 403)
-
-        # Only the partner may accept or reject a pending request.
-        if status in {"accepted", "rejected"}:
-            if user_id != partner or swap.get("status") != "pending":
-                return error("Cannot apply this status change", 403)
-
-        swaps_col.update_one(
-            {"_id": ObjectId(swap_id)},
-            {"$set": {"status": status, "updated_at": now_utc()}},
+        like = f"%{skill}%"
+        rows = fetch_all(
+            f"""SELECT {USER_COLUMNS} FROM users
+               WHERE role = 'user' AND (skills_offered LIKE ? OR skills_wanted LIKE ?)
+               LIMIT 100""",
+            (like, like),
         )
+    else:
+        rows = fetch_all(f"SELECT {USER_COLUMNS} FROM users WHERE role = 'user' LIMIT 100")
 
-        return jsonify({"message": "Swap status updated", "status": status})
-
-    except PyMongoError:
-        app.logger.exception("Swap update failed")
-        return error("Database unavailable", 503)
+    return jsonify([user_to_json(r) for r in rows])
 
 
-@app.route("/api/swaps/<swap_id>/review", methods=["POST"])
+# ---------------------------------------------------------------------
+# Reports
+# ---------------------------------------------------------------------
+@app.route("/api/moderation/report", methods=["POST"])
 @login_required
-def submit_review(swap_id):
-    if not valid_object_id(swap_id):
-        return error("Invalid swap ID")
-
+def create_report():
     data = get_json()
-    stars = data.get("stars", 5)
-
-    if not isinstance(stars, int) or isinstance(stars, bool) or not 1 <= stars <= 5:
-        return error("Stars must be an integer from 1 to 5")
+    category = str(data.get("category", "")).strip()
+    description = str(data.get("description", "")).strip()
 
     try:
-        swap = swaps_col.find_one({"_id": ObjectId(swap_id)})
+        reported_id = int(data.get("reported_user_id"))
+    except (TypeError, ValueError):
+        return error("A valid reported_user_id is required")
 
-        if not swap:
-            return error("Swap not found", 404)
+    if not category:
+        return error("Category is required")
+    if not fetch_one("SELECT id FROM users WHERE id = ?", (reported_id,)):
+        return error("Reported user not found", 404)
 
-        if swap.get("status") != "completed":
-            return error("Only completed swaps can be reviewed", 400)
+    # "summary" is for the AI-generated summary; it stays empty until you add that
+    report_id = execute(
+        """INSERT INTO reports (reporter_id, reported_user_id, category, description)
+           VALUES (?, ?, ?, ?)""",
+        (session["user_id"], reported_id, category, description),
+    )
+    return jsonify({"message": "Report submitted", "id": report_id}), 201
 
-        reviewer_id = str(session["user_id"])
-        requester_id = str(swap.get("requester_id", ""))
-        partner_id = str(swap.get("partner_id", swap.get("partnerId", "")))
-
-        if reviewer_id not in {requester_id, partner_id}:
-            return error("Not allowed to review this swap", 403)
-
-        reviewee_id = (
-            partner_id if reviewer_id == requester_id else requester_id
-        )
-
-        if not reviewee_id or reviewee_id == reviewer_id:
-            return error("Invalid review participants")
-
-        if reviews_col.find_one({
-            "swap_id": swap_id,
-            "reviewer_id": reviewer_id,
-        }):
-            return error("You have already reviewed this swap", 409)
-
-        review = {
-            "swap_id": swap_id,
-            "reviewer_id": reviewer_id,
-            "reviewee_id": reviewee_id,
-            "stars": stars,
-            "comment": data.get("comment", ""),
-            "created_at": now_utc(),
-        }
-
-        result = reviews_col.insert_one(review)
-        review["id"] = str(result.inserted_id)
-
-        return jsonify({
-            "message": "Review submitted successfully",
-            "review": review,
-        }), 201
-
-    except PyMongoError:
-        app.logger.exception("Review submission failed")
-        return error("Database unavailable", 503)
-
-
-# ---------------------------------------------------------------------
-# AI integration placeholder
-# Replace with your intent router, automation and profile RAG.
-# ---------------------------------------------------------------------
-
-@app.route("/api/ai/chat", methods=["POST"])
-@login_required
-def ai_chat():
-    data = get_json()
-    query = data.get("query")
-
-    if not isinstance(query, str) or not query.strip():
-        return error("A query is required")
-
-    # Temporary response until the AI module is connected.
-    return jsonify({
-        "response": "AI integration is not connected yet.",
-        "intent": "GENERAL",
-        "results": [],
-    })
-
-
-# ---------------------------------------------------------------------
-# Admin APIs
-# ---------------------------------------------------------------------
 
 @app.route("/api/admin/moderation", methods=["GET"])
 @admin_required
-def get_moderation_items():
-    try:
-        items = [
-            serialize_doc(item)
-            for item in moderation_col.find().limit(100)
-        ]
-        return jsonify(items)
+def list_reports():
+    rows = fetch_all(
+        """SELECT r.*, reporter.name AS reporter_name, reported.name AS reported_name
+           FROM reports r
+           LEFT JOIN users reporter ON reporter.id = r.reporter_id
+           LEFT JOIN users reported ON reported.id = r.reported_user_id
+           ORDER BY r.id DESC
+           LIMIT 100"""
+    )
+    return jsonify([dict(r) for r in rows])
 
-    except PyMongoError:
-        app.logger.exception("Moderation lookup failed")
-        return error("Database unavailable", 503)
 
-
-@app.route("/api/admin/broadcast", methods=["POST"])
+@app.route("/api/admin/moderation/<int:report_id>", methods=["PATCH"])
 @admin_required
-def set_broadcast():
-    data = get_json()
-    text = data.get("text")
+def update_report_status(report_id):
+    status = get_json().get("status")
+    if status not in REPORT_STATUSES:
+        return error("Status must be one of: " + ", ".join(REPORT_STATUSES))
 
-    if not isinstance(text, str) or not text.strip():
-        return error("Broadcast text is required")
+    if not fetch_one("SELECT id FROM reports WHERE id = ?", (report_id,)):
+        return error("Report not found", 404)
 
-    try:
-        broadcasts_col.update_one(
-            {"type": data.get("type", "announcement")},
-            {"$set": {
-                "active": True,
-                "type": data.get("type", "announcement"),
-                "text": text.strip(),
-                "published_at": now_utc(),
-            }},
-            upsert=True,
-        )
-
-        return jsonify({"message": "Broadcast published"})
-
-    except PyMongoError:
-        app.logger.exception("Broadcast update failed")
-        return error("Database unavailable", 503)
+    execute("UPDATE reports SET status = ? WHERE id = ?", (status, report_id))
+    return jsonify({"message": "Report updated", "status": status})
 
 
 # ---------------------------------------------------------------------
-# Start server
-# ---------------------------------------------------------------------
-
 if __name__ == "__main__":
+    if not DB_PATH.exists():
+        print("skillswap.db not found - run `python seed_db.py` first.")
     app.run(port=5000, debug=True)
