@@ -575,38 +575,180 @@ function renderAiDrawerMessages() {
   container.scrollTop = container.scrollHeight;
 }
 
+function buildAiProfileCards(profiles) {
+  if (!Array.isArray(profiles) || profiles.length === 0) {
+    return '';
+  }
+
+  const toList = value => {
+    if (Array.isArray(value)) {
+      return value.join(', ');
+    }
+
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed.join(', ');
+      } catch (_) {
+        // Keep ordinary strings as they are.
+      }
+
+      return value;
+    }
+
+    return '';
+  };
+
+  return `
+    <div class="ai-profile-results">
+      <div class="ai-profile-results-title">
+        Similar profiles (${profiles.length})
+      </div>
+
+      ${profiles.map(profile => {
+        const user = AppState.users.find(
+          u => String(u.id) === String(profile.user_id)
+        );
+
+        const name = user?.name || profile.name || 'SkillSwap Member';
+        const offered = user?.skillsOffered ?? user?.skills_offered ?? [];
+        const wanted = user?.skillsWanted ?? user?.skills_wanted ?? [];
+        const availability = user?.availability || '';
+        const location = user?.location || '';
+        const rating = user?.rating;
+
+        return `
+          <article class="ai-profile-card">
+            <div class="ai-profile-card-name">
+              ${escapeHtml(name)}
+            </div>
+
+            ${location ? `
+              <div class="ai-profile-card-detail">
+                ${escapeHtml(location)}
+              </div>
+            ` : ''}
+
+            <div class="ai-profile-card-detail">
+              <strong>Teaches:</strong>
+              ${escapeHtml(toList(offered) || 'See profile')}
+            </div>
+
+            <div class="ai-profile-card-detail">
+              <strong>Wants to learn:</strong>
+              ${escapeHtml(toList(wanted) || 'See profile')}
+            </div>
+
+            ${availability ? `
+              <div class="ai-profile-card-detail">
+                <strong>Availability:</strong>
+                ${escapeHtml(toList(availability))}
+              </div>
+            ` : ''}
+
+            ${rating !== undefined && rating !== null ? `
+              <div class="ai-profile-card-detail">
+                <strong>Rating:</strong> ★ ${escapeHtml(rating)}
+              </div>
+            ` : ''}
+
+            ${user ? `
+              <button
+                type="button"
+                class="btn btn-primary ai-profile-view-btn"
+                data-profile-id="${escapeHtml(String(user.id))}"
+              >
+                View Profile
+              </button>
+            ` : `
+              <div class="ai-profile-card-detail">
+                Profile details are not currently loaded.
+              </div>
+            `}
+          </article>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+
+document.getElementById('aiDrawerMessages')?.addEventListener(
+  'click',
+  function (event) {
+    const button = event.target.closest('.ai-profile-view-btn');
+
+    if (!button) return;
+
+    const profileId = button.dataset.profileId;
+
+    // Match IDs consistently, even if one is a number and one is a string.
+    const user = AppState.users.find(
+      u => String(u.id) === String(profileId)
+    );
+
+    if (user) {
+      openPublicMemberProfile(user.id);
+    }
+  }
+);
+
+
 function sendAiPrompt(promptText) {
   const input = document.getElementById('aiChatInput');
   input.value = promptText;
   handleAiChatSubmit(new Event('submit'));
 }
 
+
 async function handleAiChatSubmit(e) {
   e.preventDefault();
+
   const input = document.getElementById('aiChatInput');
   const userText = input.value.trim();
+
   if (!userText) return;
 
-  // msg.text is inserted with innerHTML, so user text is escaped first
-  AppState.chatMessages.push({ sender: 'user', text: escapeHtml(userText) });
+  // msg.text is inserted with innerHTML, so user text is escaped first.
+  AppState.chatMessages.push({
+    sender: 'user',
+    text: escapeHtml(userText)
+  });
+
   input.value = '';
   renderAiDrawerMessages();
 
   try {
-    const res = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.AI_CHAT}`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: userText })
-    });
+    const res = await fetch(
+      `${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.AI_CHAT}`,
+      {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: userText
+        })
+      }
+    );
+
     const data = await res.json().catch(() => ({}));
 
     AppState.chatMessages.push({
       sender: 'ai',
+
       text: res.ok
         ? escapeHtml(data.reply || 'No response received.')
-        : escapeHtml(data.error || `Request failed (${res.status})`)
+        : escapeHtml(
+            data.error || `Request failed (${res.status})`
+          ),
+
+      actionsHtml: res.ok
+        ? buildAiProfileCards(data.profiles)
+        : ''
     });
+
   } catch (err) {
     AppState.chatMessages.push({
       sender: 'ai',

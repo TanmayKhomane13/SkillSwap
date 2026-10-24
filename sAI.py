@@ -11,6 +11,10 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoModelForCausalLM
 from peft import PeftModel
 
+import json
+from langchain_core.tools import tool
+from vector_store import vector_store
+
 #========= MODEL PATHS & DEVICE =========
 
 BASE_MODEL_NAME = "distilbert-base-uncased"
@@ -102,23 +106,39 @@ def classify_intent(message: str) -> dict:
     }
 
 #========= PROMPT BUILDER =========
-
 def prompt_builder(intent):
 
     if intent == "AUTOMATION":
         return """
-        You are sAI, the SkillSwap assistant.
+    You are sAI, the SkillSwap assistant.
 
-        Use search_profiles to find relevant profiles through semantic
-        search and update the frontend UI based on the results.
+    For skill-exchange searches, extract both skills from the user's message:
+    - teach_skill: the skill the user offers to teach
+    - want_skill: the skill the user wants to learn
 
-        Return valid JSON only.
-        For a tool:
-        {"tool": "search_profiles", "arguments": {"query": "..."}}
+    Return valid JSON only, without Markdown code fences.
 
-        For a direct answer:
-        {"tool": null, "answer": "..."}
-        """
+    Example:
+    User: I want to teach Unity Game Development in exchange for Python.
+
+    {
+    "tool": "search_profiles",
+    "arguments": {
+        "teach_skill": "Unity Game Development",
+        "want_skill": "Python"
+    }
+    }
+
+    Use the actual skills from the user's message.
+    Do not invent missing skills.
+    Do not include current_user_id; the application supplies it.
+
+    If either skill is missing, return:
+    {
+    "tool": null,
+    "answer": "Which skill would you like to teach, and which skill would you like to learn?"
+    }
+    """
 
     elif intent == "PROFILE_QUERY":
         return """
@@ -154,66 +174,269 @@ def prompt_builder(intent):
         {"tool": null, "answer": "..."}
         """
 
+# ==================== TOOLS ======================================
+@tool
+def get_profile(user_name: str, question: str) -> str:
+    """
+    Answer a question about a specific SkillSwap user's profile.
+    Retrieve the user's profile from ChromaDB and return its information.
+    """
+
+    # Find the profile by its name in ChromaDB metadata.
+    results = vector_store.similarity_search(
+        query=f"Name: {user_name}",
+        k=20,
+    )
+
+    profile = next(
+        (
+            doc for doc in results
+            if doc.metadata.get("name", "").strip().casefold()
+            == user_name.strip().casefold()
+        ),
+        None,
+    )
+
+    if profile is None:
+        return f"No profile found for {user_name}."
+
+    return (
+        f"Profile information for {user_name}:\n"
+        f"{profile.page_content}\n\n"
+        f"User's question: {question}"
+    )
+
+
+
+@tool
+def search_profiles(
+    teach_skill: str,
+    want_skill: str,
+    current_user_id: str
+) -> str:
+    """Find SkillSwap profiles based on the skill a user teaches
+    and the skill they want to learn."""
+
+    results = vector_store.similarity_search(
+        query=f"Skills offered: {teach_skill}. Skills wanted: {want_skill}",
+        k=20
+    )
+
+    profiles = []
+    seen_ids = set()
+
+    for doc in results:
+        user_id = str(doc.metadata.get("user_id", ""))
+
+        # Exclude the currently logged-in user.
+        if not user_id or user_id == str(current_user_id):
+            continue
+
+        # Avoid duplicate profiles.
+        if user_id in seen_ids:
+            continue
+
+        seen_ids.add(user_id)
+
+        profiles.append({
+            "user_id": user_id,
+            "name": doc.metadata.get("name", "Unknown"),
+            "profile_text": doc.page_content
+        })
+
+        if len(profiles) == 5:
+            break
+
+    return json.dumps({
+        "teach_skill": teach_skill,
+        "want_skill": want_skill,
+        "profiles": profiles,
+        "count": len(profiles)
+    })
+
+SKILLSWAP_TOOLS = [
+    search_profiles,
+    get_profile,
+]
+
+available_tools = {
+    tool.name: tool
+    for tool in SKILLSWAP_TOOLS
+}
+
 #========= MAIN sAI PIPELINE =========
-def handle_message(message: str) -> str:
-    """Classify the message, select a tool, and return the result."""
-
-    message = message.strip()
-
-    if not message:
-        return "Please enter a message."
-
-    #========= INTENT CLASSIFICATION =========
-
-    result = classify_intent(message)
-
-    intent = result["intent"]
-    confidence = result["confidence"]
-
-    #========= PROMPT SELECTION =========
-
-    system_prompt = prompt_builder(intent)
-
-    #========= LLM TOOL SELECTION =========
-
-    messages = [
-        {
-            "role": "system",
-            "content": system_prompt
-        },
-        {
-            "role": "user",
-            "content": message
-        }
-    ]
+def generate_response(messages, max_new_tokens=200):
+    """Generate a response using the locally loaded Qwen model."""
 
     prompt = gen_llm_tokenizer.apply_chat_template(
         messages,
         tokenize=False,
-        add_generation_prompt=True
+        add_generation_prompt=True,
     )
 
     inputs = gen_llm_tokenizer(
         prompt,
-        return_tensors="pt"
+        return_tensors="pt",
     ).to(device)
 
     with torch.no_grad():
         outputs = gen_llm_model.generate(
             **inputs,
-            max_new_tokens=150,
-            do_sample=False
+            max_new_tokens=max_new_tokens,
+            do_sample=False,
         )
 
     response = gen_llm_tokenizer.decode(
         outputs[0][inputs.input_ids.shape[1]:],
-        skip_special_tokens=True
+        skip_special_tokens=True,
     )
 
-    #========= RETURN RESULT =========
+    return response.strip()
 
-    return (
-        f"Predicted intent: {intent}\n"
-        f"Confidence: {confidence:.2%}\n"
-        f"LLM decision: {response}"
-    )
+
+def handle_message(message: str, current_user_id: str):
+    # 1. Classify the user's intent.
+    classification = classify_intent(message)
+    intent = classification["intent"]
+    confidence = classification["confidence"]
+
+    # 2. Build the intent-specific prompt.
+    system_prompt = prompt_builder(intent)
+
+    messages = [
+        {
+            "role": "system",
+            "content": system_prompt,
+        },
+        {
+            "role": "user",
+            "content": message,
+        },
+    ]
+
+    try:
+        # 3. Ask Qwen to select a tool or answer directly.
+        response = generate_response(
+            messages,
+            max_new_tokens=200,
+        )
+
+        # 4. Parse the JSON decision.
+        decision = json.loads(response)
+        tool_name = decision.get("tool")
+
+        # 5. Direct answer: no tool required.
+        if tool_name is None:
+            return {
+                "intent": intent,
+                "confidence": confidence,
+                "tool": None,
+                "answer": decision.get(
+                    "answer",
+                    "No answer provided.",
+                ),
+                "profiles": [],
+            }
+
+        # 6. Validate the selected tool.
+        if tool_name not in available_tools:
+            return {
+                "intent": intent,
+                "confidence": confidence,
+                "tool": tool_name,
+                "answer": "The requested tool is unavailable.",
+                "profiles": [],
+            }
+
+        # 7. Read arguments selected by Qwen.
+        arguments = decision.get("arguments", {})
+
+        if not isinstance(arguments, dict):
+            raise TypeError("Tool arguments must be a JSON object.")
+
+        if tool_name == "search_profiles":
+            teach_skill = arguments.get("teach_skill")
+            want_skill = arguments.get("want_skill")
+
+            if not teach_skill or not want_skill:
+                return {
+                    "intent": intent,
+                    "confidence": confidence,
+                    "tool": None,
+                    "answer": (
+                        "Please specify both the skill you want to teach "
+                        "and the skill you want to learn."
+                    ),
+                    "profiles": [],
+                }
+
+            arguments = {
+                "teach_skill": teach_skill,
+                "want_skill": want_skill,
+                "current_user_id": str(current_user_id),
+            }
+
+        result = available_tools[tool_name].invoke(arguments)
+
+        profiles = []
+
+        if tool_name == "search_profiles":
+            try:
+                search_data = (
+                    json.loads(result)
+                    if isinstance(result, str)
+                    else result
+                )
+
+                if isinstance(search_data, dict):
+                    profiles = search_data.get("profiles", [])
+
+            except (json.JSONDecodeError, TypeError):
+                profiles = []
+
+
+        final_messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are sAI, the SkillSwap assistant. "
+                    "Answer concisely using the actual tool results. "
+                    "Do not invent profiles or claim actions were completed."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Original request: {message}\n\n"
+                    f"Actual tool result:\n{result}"
+                ),
+            },
+        ]
+
+        final_answer = generate_response(
+            final_messages,
+            max_new_tokens=200,
+        )
+
+        return {
+            "intent": intent,
+            "confidence": confidence,
+            "tool": tool_name,
+            "tool_result": result,
+            "answer": final_answer,
+            "profiles": profiles,
+        }
+
+    except Exception as error:
+        print(f"[sAI] Could not process request: {error}")
+
+        return {
+            "intent": intent,
+            "confidence": confidence,
+            "tool": None,
+            "answer": (
+                "I couldn't process that request. "
+                "Please try rephrasing it."
+            ),
+            "profiles": [],
+        }

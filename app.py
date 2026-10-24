@@ -469,16 +469,25 @@ def update_report_status(report_id):
 def ai_chat():
     data = get_json()
     message = str(data.get("message", "")).strip()
+
     if not message:
         return error("Message is required")
 
     try:
-        reply = handle_message(message)
+        result = handle_message(
+            message,
+            current_user_id=str(session["user_id"])
+        )
     except Exception as e:
         print(f"[sAI] error: {e}")
         return error("AI service temporarily unavailable", 500)
 
-    return jsonify({"reply": reply})
+    return jsonify({
+        "reply": result.get("answer", "No response received."),
+        "profiles": result.get("profiles", []),
+        "intent": result.get("intent"),
+        "tool": result.get("tool")
+    })
 # ========================================================================
 
 # ---------------------------------------------------------------------

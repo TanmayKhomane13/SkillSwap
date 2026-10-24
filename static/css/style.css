@@ -2272,3 +2272,44 @@ body.on-profile-view .ai-drawer-overlay {
     padding-right: 0;
   }
 }
+
+
+/* sAI semantic profile search cards */
+.ai-profile-results {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ai-profile-results-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.ai-profile-card {
+  padding: 12px;
+  border: 1px solid rgba(120, 120, 120, 0.25);
+  border-radius: 12px;
+  background: var(--bg-card, rgba(255, 255, 255, 0.65));
+  overflow-wrap: anywhere;
+}
+
+.ai-profile-card-name {
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text-main);
+}
+
+.ai-profile-card-detail {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin-bottom: 5px;
+  color: var(--text-muted);
+}
+
+.ai-profile-view-btn {
+  margin-top: 8px;
+  cursor: pointer;
+}
