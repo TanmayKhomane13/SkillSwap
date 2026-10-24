@@ -1,475 +1,617 @@
-"""
-=============================================================================
-SKILLSWAP - PYTHON FLASK + MONGODB + GOOGLE OAUTH BACKEND
-=============================================================================
-This production-ready application connects seamlessly to the Vanilla JS frontend
-(`script.js`, `login.html`, `index.html`, and `admin.html`).
 
-Prerequisites:
-  pip install flask flask-cors pymongo authlib requests python-dotenv
-  (optional, for gzip) pip install flask-compress
-
-MongoDB Collections Schema:
-  - `users`: { _id, email, password_hash, google_id, name, avatar, location,
-               bio, visibility, availability, skillsOffered, skillsWanted,
-               rating, reviewCount, swapsCompleted, role, created_at }
-  - `swaps`: { _id, requester_id, partner_id, skillWanted, skillOffered,
-               message, status, created_at, updated_at }
-  - `reviews`: { _id, swap_id, reviewer_id, reviewee_id, stars, comment, created_at }
-  - `moderation`: { _id, target_user_id, content, ai_category, ai_confidence,
-                    ai_reason, status, created_at }
-  - `broadcasts`: { _id, active, type, text, published_at }
-=============================================================================
-"""
-
-from datetime import datetime
-from functools import wraps
 import os
-# pyrefly: ignore[missing-import]
+import re
+from datetime import datetime, timezone
+from functools import wraps
+
 from bson import ObjectId
 from dotenv import load_dotenv
-from flask import Flask, jsonify, redirect, render_template, request, session, url_for
+from flask import (
+    Flask,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from flask_cors import CORS
-from mock_data import seed_mongodb
-# pyrefly: ignore[missing-import]
 from pymongo import MongoClient
-import requests
+from pymongo.errors import PyMongoError
 
 load_dotenv()
 
+# ---------------------------------------------------------------------
+# Flask setup
+# ---------------------------------------------------------------------
+
 app = Flask(__name__)
 app.secret_key = os.getenv(
-    "SECRET_KEY", "skillswap-insecure-secret-key-change-in-prod"
+    "SECRET_KEY",
+    "skillswap-local-development-only",
 )
 
-app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "skillswap-insecure-secret-key-change-in-prod")
-# PERF: allow browsers to cache static files (was 0)
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 86400
-app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+)
+
 CORS(app, supports_credentials=True)
 
-# PERF: gzip responses if flask-compress is installed (optional)
-try:
-    from flask_compress import Compress
-    Compress(app)
-except ImportError:
-    pass
 
-@app.after_request
-def add_no_cache_headers(response):
-    # PERF: only disable caching for HTML/API; let static assets be cached
-    if request.path.startswith("/static/"):
-        response.headers['Cache-Control'] = 'public, max-age=86400'
-    else:
-        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '-1'
-    return response
+def now_utc():
+    return datetime.now(timezone.utc)
 
-# ---------------------------------------------------------------------------
-# Frontend Page Routes (HTML Templates)
-# ---------------------------------------------------------------------------
-@app.route("/")
-@app.route("/index")
-@app.route("/index.html")
-def home():
-    """Serves the main User Dashboard view"""
-    # Redirect to login page if not logged in
-    if not session.get("user_id"):
-        return redirect(url_for("login"))
-    return render_template("index.html")
 
-@app.route("/login")
-@app.route("/login.html")
-def login():
-    """Serves the Login & Access Portal view"""
-    # Landing on the login page means signed out: clear any server session
-    session.clear()
-    return render_template("login.html")
+def error(message, status=400):
+    return jsonify({"error": message}), status
 
-@app.route("/logout")
-@app.route("/api/auth/logout", methods=["GET", "POST"])
-def logout():
-    """Clears the server session"""
-    session.clear()
-    if request.path.startswith("/api/"):
-        return jsonify({"message": "Logged out"})
-    return redirect(url_for("login"))
 
-@app.route("/admin")
-@app.route("/admin.html")
-def admin():
-    """Serves the Admin Moderation Dashboard view"""
-    return render_template("admin.html")
+# ---------------------------------------------------------------------
+# MongoDB setup
+# No automatic seeding. MongoDB operations connect when first needed.
+# ---------------------------------------------------------------------
 
-# Static fallback routes ensuring zero 404 errors regardless of path syntax
-@app.route("/static/style.css")
-def serve_root_style():
-    if os.path.exists(os.path.join(app.static_folder, "style.css")):
-        return app.send_static_file("style.css")
-    return app.send_static_file("css/style.css")
+MONGO_URI = os.getenv(
+    "MONGO_URI",
+    "mongodb://127.0.0.1:27017/skillswap",
+)
 
-@app.route("/static/css/style.css")
-def serve_css_style():
-    if os.path.exists(os.path.join(app.static_folder, "css", "style.css")):
-        return app.send_static_file("css/style.css")
-    return app.send_static_file("style.css")
-
-@app.route("/static/script.js")
-def serve_root_script():
-    if os.path.exists(os.path.join(app.static_folder, "script.js")):
-        return app.send_static_file("script.js")
-    return app.send_static_file("js/script.js")
-
-@app.route("/static/js/script.js")
-def serve_js_script():
-    if os.path.exists(os.path.join(app.static_folder, "js", "script.js")):
-        return app.send_static_file("js/script.js")
-    return app.send_static_file("script.js")
-
-# ---------------------------------------------------------------------------
-# MongoDB Connection & Auto-Seed
-# ---------------------------------------------------------------------------
-# PERF: 127.0.0.1 avoids slow localhost/IPv6 resolution
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017/skillswap")
-# PERF: fail fast (2s instead of 30s) when DB is unreachable, bigger pool
-client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=2000, maxPoolSize=50)
+client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=2000)
 db = client.get_default_database()
 
 users_col = db["users"]
 swaps_col = db["swaps"]
 reviews_col = db["reviews"]
+
+# Keep the existing collection name if admin.html expects it.
 moderation_col = db["moderation"]
 broadcasts_col = db["broadcasts"]
 
-# Automatically seed mock_data into local MongoDB if empty
-try:
-  seed_mongodb(db)
-except Exception as e:
-  print(f"⚠️ Could not connect/seed MongoDB: {e}")
 
-# PERF: indexes so lookups don't scan whole collections
-try:
-  users_col.create_index("email")
-  users_col.create_index("id")
-  users_col.create_index("visibility")
-  swaps_col.create_index("created_at")
-except Exception as e:
-  print(f"⚠️ Could not create indexes: {e}")
+# ---------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------
 
-
-# Helper for JSON serialization of ObjectId
 def serialize_doc(doc):
-  if not doc:
-    return None
-  doc = dict(doc)
-  if "_id" in doc:
-    # Keep custom id if present (from mock_data), else use Mongo _id
-    if "id" not in doc:
-      doc["id"] = str(doc["_id"])
-    doc.pop("_id", None)
-  return doc
+    if doc is None:
+        return None
+
+    result = dict(doc)
+    mongo_id = result.pop("_id", None)
+
+    if "id" not in result and mongo_id is not None:
+        result["id"] = str(mongo_id)
+
+    return result
 
 
-# ---------------------------------------------------------------------------
-# Google OAuth 2.0 Real Implementation
-# ---------------------------------------------------------------------------
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+def find_user(user_id):
+    """Resolve either a custom string ID or MongoDB ObjectId."""
+    if not user_id:
+        return None
+
+    conditions = [{"id": str(user_id)}]
+
+    if ObjectId.is_valid(str(user_id)):
+        conditions.append({"_id": ObjectId(str(user_id))})
+
+    return users_col.find_one({"$or": conditions})
 
 
-@app.route("/auth/google")
-def google_auth_login():
-  """Initiates Google OAuth 2.0 flow"""
-  redirect_uri = url_for("google_auth_callback", _external=True)
-  google_auth_url = (
-      "https://accounts.google.com/o/oauth2/v2/auth?"
-      f"client_id={GOOGLE_CLIENT_ID}&"
-      "response_type=code&"
-      "scope=openid%20email%20profile&"
-      f"redirect_uri={redirect_uri}&"
-      "access_type=offline&"
-      "prompt=select_account"
-  )
-  return redirect(google_auth_url)
+def login_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not session.get("user_id"):
+            return error("Login required", 401)
+        return fn(*args, **kwargs)
+
+    return wrapper
 
 
-@app.route("/auth/google/callback")
-def google_auth_callback():
-  """Receives authorization code from Google, exchanges for profile, saves to MongoDB"""
-  code = request.args.get("code")
-  if not code:
-    return redirect(url_for("login"))
+def admin_required(fn):
+    @wraps(fn)
+    @login_required
+    def wrapper(*args, **kwargs):
+        user = find_user(session.get("user_id"))
 
-  redirect_uri = url_for("google_auth_callback", _external=True)
+        if not user or user.get("role") != "admin":
+            return error("Admin access required", 403)
 
-  # 1. Exchange authorization code for access token with Google
-  token_res = requests.post(
-      "https://oauth2.googleapis.com/token",
-      data={
-          "code": code,
-          "client_id": GOOGLE_CLIENT_ID,
-          "client_secret": GOOGLE_CLIENT_SECRET,
-          "redirect_uri": redirect_uri,
-          "grant_type": "authorization_code",
-      },
-      timeout=5,  # PERF: don't hang forever
-  )
-  token_data = token_res.json()
-  access_token = token_data.get("access_token")
+        return fn(*args, **kwargs)
 
-  if not access_token:
-    return (
-        jsonify(
-            {"error": "Failed to fetch Google access token", "details": token_data}
-        ),
-        400,
-    )
+    return wrapper
 
-  # 2. Fetch user profile from Google
-  userinfo_res = requests.get(
-      "https://www.googleapis.com/oauth2/v2/userinfo",
-      headers={"Authorization": f"Bearer {access_token}"},
-      timeout=5,  # PERF: don't hang forever
-  )
-  google_user = userinfo_res.json()
-  google_email = google_user.get("email")
-  google_name = google_user.get("name", "Google User")
-  google_id = google_user.get("id")
-  google_avatar = (
-      google_user.get("picture") or "static/images/default-avatar.png"
-  )
 
-  # 3. Try saving/finding user in MongoDB (Safely catch offline database)
-  try:
-    user = users_col.find_one({"email": google_email})
-    if not user:
-      new_user_doc = {
-          "name": google_name,
-          "email": google_email,
-          "google_id": google_id,
-          "role": "user",
-          "avatar": google_avatar,
-          "location": "Remote",
-          "bio": "Joined via Google OAuth",
-          "visibility": "public",
-          "availability": ["Weekends", "Weekday Evenings"],
-          "skillsOffered": ["General Mentorship"],
-          "skillsWanted": ["Programming"],
-          "rating": 5.0,
-          "reviewCount": 0,
-          "swapsCompleted": 0,
-          "created_at": datetime.utcnow(),
-      }
-      inserted = users_col.insert_one(new_user_doc)
-      user = users_col.find_one({"_id": inserted.inserted_id})
-    else:
-      users_col.update_one(
-          {"_id": user["_id"]}, {"$set": {"google_id": google_id}}
-      )
+def get_json():
+    return request.get_json(silent=True) or {}
 
-    user_clean = serialize_doc(user)
 
-  except Exception as db_err:
-    # 🛑 If MongoDB is offline, create a temporary session user object so the app doesn't crash!
-    print(f"⚠️ Database offline error caught: {db_err}")
-    user_clean = {
-        "id": "temp_offline_user",
-        "name": google_name,
-        "email": google_email,
-        "role": "user",
-        "avatar": google_avatar,
-    }
+def valid_object_id(value):
+    return isinstance(value, str) and ObjectId.is_valid(value)
 
-  # 4. Set session & sync to frontend localStorage
-  session["user_id"] = user_clean.get("id")
-  session["user_email"] = google_email
 
-  import json
+# ---------------------------------------------------------------------
+# Frontend pages
+# ---------------------------------------------------------------------
 
-  user_json = json.dumps(user_clean, default=str)
-  return f"""
-    <script>
-        localStorage.setItem('skillswap_user', {json.dumps(user_json)});
-        localStorage.setItem('skillswap_role', 'user');
-        window.location.href = '/';
-    </script>
-    """
-# ---------------------------------------------------------------------------
-# Authentication APIs
-# ---------------------------------------------------------------------------
+@app.route("/")
+@app.route("/index")
+@app.route("/index.html")
+def home():
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    return render_template("index.html")
+
+
+@app.route("/login")
+@app.route("/login.html")
+def login():
+    # Do not clear the session just because the login page was opened.
+    return render_template("login.html")
+
+
+@app.route("/admin")
+@app.route("/admin.html")
+def admin():
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    user = find_user(session.get("user_id"))
+
+    if not user or user.get("role") != "admin":
+        return error("Admin access required", 403)
+
+    return render_template("admin.html")
+
+
+# ---------------------------------------------------------------------
+# Authentication
+# Demo-only email login; replace with password authentication later.
+# ---------------------------------------------------------------------
+
 @app.route("/api/auth/login", methods=["POST"])
 def auth_login():
-  data = request.get_json() or {}
-  email = data.get("email")
-  user = users_col.find_one({"email": email})
-  if not user:
-    return jsonify({"error": "Invalid email or credentials"}), 401
-  user_clean = serialize_doc(user)
-  session["user_id"] = user_clean["id"]
-  return jsonify({"message": "Login successful", "user": user_clean})
+    data = get_json()
+    email = data.get("email")
+
+    if not isinstance(email, str) or not email.strip():
+        return error("Email is required")
+
+    try:
+        user = users_col.find_one(
+            {"email": email.strip().lower()}
+        )
+
+        if not user:
+            return error("User not found. Register or use a demo account.", 401)
+
+        user_clean = serialize_doc(user)
+        session["user_id"] = user_clean["id"]
+        session["user_email"] = user.get("email")
+
+        return jsonify({
+            "message": "Demo login successful",
+            "user": user_clean,
+        })
+
+    except PyMongoError:
+        app.logger.exception("Login database error")
+        return error("Database unavailable", 503)
+
 
 @app.route("/api/auth/register", methods=["POST"])
 def auth_register():
-    data = request.get_json() or {}
-    if users_col.find_one({"email": data.get("email")}):
-        return jsonify({"error": "User with this email already exists"}), 400
-    
-    new_user = {
-        "name": data.get("name"),
-        "email": data.get("email"),
-        "role": "user",
-        "avatar": data.get("avatar", "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200"),
-        "location": data.get("location", "Remote"),
-        "bio": data.get("bio", ""),
-        "visibility": "public",
-        "availability": data.get("availability", ["Weekends"]),
-        "skillsOffered": [data.get("skill")] if data.get("skill") else ["General Mentorship"],
-        "skillsWanted": ["Programming"],
-        "rating": 5.0,
-        "swapsCompleted": 0,
-        "created_at": datetime.utcnow()
-    }
-    user_id = users_col.insert_one(new_user).inserted_id
-    new_user["id"] = str(user_id)
-    return jsonify({"message": "Registration successful", "user": new_user}), 201
+    data = get_json()
 
-# ---------------------------------------------------------------------------
-# Profile & Skills Management
-# ---------------------------------------------------------------------------
+    name = data.get("name")
+    email = data.get("email")
+
+    if not isinstance(name, str) or not name.strip():
+        return error("Name is required")
+
+    if not isinstance(email, str) or not re.fullmatch(
+        r"[^@\s]+@[^@\s]+\.[^@\s]+", email.strip()
+    ):
+        return error("A valid email is required")
+
+    email = email.strip().lower()
+
+    try:
+        if users_col.find_one({"email": email}):
+            return error("User with this email already exists", 409)
+
+        user = {
+            "name": name.strip(),
+            "email": email,
+            "role": "user",
+            "avatar": data.get("avatar", ""),
+            "location": data.get("location", "Remote"),
+            "bio": data.get("bio", ""),
+            "visibility": "public",
+            "availability": data.get("availability", ["Weekends"]),
+            "skillsOffered": (
+                [data["skill"]] if data.get("skill")
+                else ["General Mentorship"]
+            ),
+            "skillsWanted": ["Programming"],
+            "rating": 5.0,
+            "reviewCount": 0,
+            "swapsCompleted": 0,
+            "created_at": now_utc(),
+        }
+
+        inserted = users_col.insert_one(user)
+        user["id"] = str(inserted.inserted_id)
+
+        session["user_id"] = user["id"]
+        session["user_email"] = email
+
+        return jsonify({
+            "message": "Registration successful",
+            "user": user,
+        }), 201
+
+    except PyMongoError:
+        app.logger.exception("Registration database error")
+        return error("Database unavailable", 503)
+
+
+@app.route("/logout")
+@app.route("/api/auth/logout", methods=["GET", "POST"])
+def logout():
+    session.clear()
+
+    if request.path.startswith("/api/"):
+        return jsonify({"message": "Logged out"})
+
+    return redirect(url_for("login"))
+
+
+# ---------------------------------------------------------------------
+# Profiles
+# ---------------------------------------------------------------------
+
 @app.route("/api/profile", methods=["GET"])
+@login_required
 def get_profile():
-  user_id = session.get("user_id")
-  if not user_id:
-    user = users_col.find_one({"id": "usr_alex_01"}) or users_col.find_one()
-    return jsonify(serialize_doc(user))
+    try:
+        user = find_user(session.get("user_id"))
 
-  # PERF: single query instead of up to two sequential ones
-  # Check by custom 'id' first, then by Mongo '_id'
-  conditions = [{"id": user_id}]
-  if ObjectId.is_valid(user_id):
-    conditions.append({"_id": ObjectId(user_id)})
-  user = users_col.find_one({"$or": conditions})
-  return jsonify(serialize_doc(user))
+        if not user:
+            session.clear()
+            return error("User not found", 404)
+
+        return jsonify(serialize_doc(user))
+
+    except PyMongoError:
+        app.logger.exception("Profile lookup failed")
+        return error("Database unavailable", 503)
+
 
 @app.route("/api/profile/update", methods=["POST"])
+@login_required
 def update_profile():
-    data = request.get_json() or {}
-    user_id = data.get("id") or session.get("user_id")
-    if user_id:
-        users_col.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$set": {
-                "name": data.get("name"),
-                "location": data.get("location"),
-                "bio": data.get("bio"),
-                "visibility": data.get("visibility", "public"),
-                "availability": data.get("availability", []),
-                "skillsOffered": data.get("skillsOffered", []),
-                "skillsWanted": data.get("skillsWanted", []),
-                "updated_at": datetime.utcnow()
-            }}
-        )
-    return jsonify({"message": "Profile updated successfully"})
+    data = get_json()
 
-# ---------------------------------------------------------------------------
-# User Search & Discovery
-# ---------------------------------------------------------------------------
+    # The logged-in user's session determines which profile can be edited.
+    user = find_user(session.get("user_id"))
+
+    if not user:
+        return error("User not found", 404)
+
+    allowed_fields = (
+        "name",
+        "location",
+        "bio",
+        "visibility",
+        "availability",
+        "skillsOffered",
+        "skillsWanted",
+    )
+
+    updates = {
+        field: data[field]
+        for field in allowed_fields
+        if field in data
+    }
+    updates["updated_at"] = now_utc()
+
+    try:
+        users_col.update_one(
+            {"_id": user["_id"]},
+            {"$set": updates},
+        )
+
+        updated_user = users_col.find_one({"_id": user["_id"]})
+
+        return jsonify({
+            "message": "Profile updated successfully",
+            "user": serialize_doc(updated_user),
+        })
+
+    except PyMongoError:
+        app.logger.exception("Profile update failed")
+        return error("Database unavailable", 503)
+
+
+# ---------------------------------------------------------------------
+# Public profile discovery
+# ---------------------------------------------------------------------
+
 @app.route("/api/users", methods=["GET"])
 def get_users():
-    query = {"visibility": "public"}
-    skill_filter = request.args.get("skill")
-    if skill_filter:
-        query["$or"] = [
-            {"skillsOffered": {"$regex": skill_filter, "$options": "i"}},
-            {"skillsWanted": {"$regex": skill_filter, "$options": "i"}}
-        ]
-    # PERF: cap result size
-    users = [serialize_doc(u) for u in users_col.find(query).limit(100)]
-    return jsonify(users)
+    skill = request.args.get("skill", "").strip()
 
-# ---------------------------------------------------------------------------
-# Swap Requests & Reviews Workflow
-# ---------------------------------------------------------------------------
+    query = {"visibility": "public"}
+
+    if skill:
+        escaped_skill = re.escape(skill[:100])
+        query["$or"] = [
+            {"skillsOffered": {"$regex": escaped_skill, "$options": "i"}},
+            {"skillsWanted": {"$regex": escaped_skill, "$options": "i"}},
+        ]
+
+    try:
+        users = [
+            serialize_doc(user)
+            for user in users_col.find(query).limit(100)
+        ]
+        return jsonify(users)
+
+    except PyMongoError:
+        app.logger.exception("User search failed")
+        return error("Database unavailable", 503)
+
+
+# ---------------------------------------------------------------------
+# Swap requests
+# ---------------------------------------------------------------------
+
 @app.route("/api/swaps", methods=["GET"])
+@login_required
 def get_swaps():
-    # PERF: cap result size
-    swaps = [serialize_doc(s) for s in swaps_col.find().limit(100)]
-    return jsonify(swaps)
+    user_id = session.get("user_id")
+
+    try:
+        swaps = swaps_col.find({
+            "$or": [
+                {"requester_id": user_id},
+                {"partner_id": user_id},
+                # Support legacy frontend documents using partnerId.
+                {"partnerId": user_id},
+            ]
+        }).limit(100)
+
+        return jsonify([serialize_doc(swap) for swap in swaps])
+
+    except PyMongoError:
+        app.logger.exception("Swap lookup failed")
+        return error("Database unavailable", 503)
+
 
 @app.route("/api/swaps/create", methods=["POST"])
+@login_required
 def create_swap():
-    data = request.get_json() or {}
-    new_swap = {
-        "partnerId": data.get("partnerId"),
-        "partnerName": data.get("partnerName"),
-        "skillWanted": data.get("skillWanted"),
-        "skillOffered": data.get("skillOffered"),
-        "message": data.get("message"),
-        "status": "pending",
-        "created_at": datetime.utcnow()
-    }
-    swap_id = swaps_col.insert_one(new_swap).inserted_id
-    new_swap["id"] = str(swap_id)
-    return jsonify({"message": "Swap request created", "swap": new_swap}), 201
+    data = get_json()
+
+    partner_id = data.get("partnerId")
+    if not partner_id:
+        return error("partnerId is required")
+
+    if str(partner_id) == str(session["user_id"]):
+        return error("You cannot create a swap with yourself")
+
+    try:
+        partner = find_user(str(partner_id))
+
+        if not partner or partner.get("visibility") != "public":
+            return error("Public partner profile not found", 404)
+
+        swap = {
+            "requester_id": session["user_id"],
+            "partner_id": str(partner_id),
+            "partnerId": str(partner_id),
+            "partnerName": partner.get("name", ""),
+            "skillWanted": data.get("skillWanted", ""),
+            "skillOffered": data.get("skillOffered", ""),
+            "message": data.get("message", ""),
+            "status": "pending",
+            "created_at": now_utc(),
+            "updated_at": now_utc(),
+        }
+
+        result = swaps_col.insert_one(swap)
+        swap["id"] = str(result.inserted_id)
+
+        return jsonify({
+            "message": "Swap request created",
+            "swap": swap,
+        }), 201
+
+    except PyMongoError:
+        app.logger.exception("Swap creation failed")
+        return error("Database unavailable", 503)
+
 
 @app.route("/api/swaps/<swap_id>/status", methods=["PATCH"])
+@login_required
 def update_swap_status(swap_id):
-    status = request.get_json().get("status")
-    swaps_col.update_one(
-        {"_id": ObjectId(swap_id)},
-        {"$set": {"status": status, "updated_at": datetime.utcnow()}}
-    )
-    return jsonify({"message": f"Swap status changed to {status}"})
+    if not valid_object_id(swap_id):
+        return error("Invalid swap ID")
+
+    data = get_json()
+    status = data.get("status")
+
+    if status not in {"pending", "accepted", "rejected", "completed", "cancelled"}:
+        return error("Invalid swap status")
+
+    try:
+        swap = swaps_col.find_one({"_id": ObjectId(swap_id)})
+
+        if not swap:
+            return error("Swap not found", 404)
+
+        user_id = str(session["user_id"])
+        requester = str(swap.get("requester_id", ""))
+        partner = str(swap.get("partner_id", swap.get("partnerId", "")))
+
+        if user_id not in {requester, partner}:
+            return error("Not allowed to update this swap", 403)
+
+        # Only the partner may accept or reject a pending request.
+        if status in {"accepted", "rejected"}:
+            if user_id != partner or swap.get("status") != "pending":
+                return error("Cannot apply this status change", 403)
+
+        swaps_col.update_one(
+            {"_id": ObjectId(swap_id)},
+            {"$set": {"status": status, "updated_at": now_utc()}},
+        )
+
+        return jsonify({"message": "Swap status updated", "status": status})
+
+    except PyMongoError:
+        app.logger.exception("Swap update failed")
+        return error("Database unavailable", 503)
+
 
 @app.route("/api/swaps/<swap_id>/review", methods=["POST"])
+@login_required
 def submit_review(swap_id):
-    data = request.get_json() or {}
-    review = {
-        "swap_id": swap_id,
-        "stars": data.get("stars", 5),
-        "comment": data.get("comment"),
-        "created_at": datetime.utcnow()
-    }
-    reviews_col.insert_one(review)
-    return jsonify({"message": "Review submitted successfully"}), 201
+    if not valid_object_id(swap_id):
+        return error("Invalid swap ID")
 
-# ---------------------------------------------------------------------------
-# AI Assistant Section (Automation & RAG Mock Endpoints)
-# ---------------------------------------------------------------------------
+    data = get_json()
+    stars = data.get("stars", 5)
+
+    if not isinstance(stars, int) or isinstance(stars, bool) or not 1 <= stars <= 5:
+        return error("Stars must be an integer from 1 to 5")
+
+    try:
+        swap = swaps_col.find_one({"_id": ObjectId(swap_id)})
+
+        if not swap:
+            return error("Swap not found", 404)
+
+        if swap.get("status") != "completed":
+            return error("Only completed swaps can be reviewed", 400)
+
+        reviewer_id = str(session["user_id"])
+        requester_id = str(swap.get("requester_id", ""))
+        partner_id = str(swap.get("partner_id", swap.get("partnerId", "")))
+
+        if reviewer_id not in {requester_id, partner_id}:
+            return error("Not allowed to review this swap", 403)
+
+        reviewee_id = (
+            partner_id if reviewer_id == requester_id else requester_id
+        )
+
+        if not reviewee_id or reviewee_id == reviewer_id:
+            return error("Invalid review participants")
+
+        if reviews_col.find_one({
+            "swap_id": swap_id,
+            "reviewer_id": reviewer_id,
+        }):
+            return error("You have already reviewed this swap", 409)
+
+        review = {
+            "swap_id": swap_id,
+            "reviewer_id": reviewer_id,
+            "reviewee_id": reviewee_id,
+            "stars": stars,
+            "comment": data.get("comment", ""),
+            "created_at": now_utc(),
+        }
+
+        result = reviews_col.insert_one(review)
+        review["id"] = str(result.inserted_id)
+
+        return jsonify({
+            "message": "Review submitted successfully",
+            "review": review,
+        }), 201
+
+    except PyMongoError:
+        app.logger.exception("Review submission failed")
+        return error("Database unavailable", 503)
+
+
+# ---------------------------------------------------------------------
+# AI integration placeholder
+# Replace with your intent router, automation and profile RAG.
+# ---------------------------------------------------------------------
+
 @app.route("/api/ai/chat", methods=["POST"])
+@login_required
 def ai_chat():
-    data = request.get_json() or {}
-    query = data.get("query", "").lower()
+    data = get_json()
+    query = data.get("query")
+
+    if not isinstance(query, str) or not query.strip():
+        return error("A query is required")
+
+    # Temporary response until the AI module is connected.
     return jsonify({
-        "response": f"AI Copilot processed query: {query}. Matching complementary skills.",
-        "results": []
+        "response": "AI integration is not connected yet.",
+        "intent": "GENERAL",
+        "results": [],
     })
 
-# ---------------------------------------------------------------------------
-# Admin Dashboard APIs
-# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
+# Admin APIs
+# ---------------------------------------------------------------------
+
 @app.route("/api/admin/moderation", methods=["GET"])
+@admin_required
 def get_moderation_items():
-    # PERF: cap result size
-    items = [serialize_doc(i) for i in moderation_col.find().limit(100)]
-    return jsonify(items)
+    try:
+        items = [
+            serialize_doc(item)
+            for item in moderation_col.find().limit(100)
+        ]
+        return jsonify(items)
+
+    except PyMongoError:
+        app.logger.exception("Moderation lookup failed")
+        return error("Database unavailable", 503)
+
 
 @app.route("/api/admin/broadcast", methods=["POST"])
+@admin_required
 def set_broadcast():
-    data = request.get_json() or {}
-    broadcasts_col.update_one(
-        {},
-        {"$set": {
-            "active": True,
-            "type": data.get("type", "announcement"),
-            "text": data.get("text"),
-            "published_at": datetime.utcnow()
-        }},
-        upsert=True
-    )
-    return jsonify({"message": "Broadcast published"})
+    data = get_json()
+    text = data.get("text")
+
+    if not isinstance(text, str) or not text.strip():
+        return error("Broadcast text is required")
+
+    try:
+        broadcasts_col.update_one(
+            {"type": data.get("type", "announcement")},
+            {"$set": {
+                "active": True,
+                "type": data.get("type", "announcement"),
+                "text": text.strip(),
+                "published_at": now_utc(),
+            }},
+            upsert=True,
+        )
+
+        return jsonify({"message": "Broadcast published"})
+
+    except PyMongoError:
+        app.logger.exception("Broadcast update failed")
+        return error("Database unavailable", 503)
+
+
+# ---------------------------------------------------------------------
+# Start server
+# ---------------------------------------------------------------------
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
