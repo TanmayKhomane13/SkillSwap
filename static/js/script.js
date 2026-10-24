@@ -11,7 +11,7 @@
 // ==========================================================================
 const CONFIG = {
   API_BASE_URL: 'http://localhost:5000',
-  USE_MOCK_BACKEND: true, // Switch to false when connecting to running Flask server
+  USE_MOCK_BACKEND: false, // Switch to false when connecting to running Flask server
   ENDPOINTS: {
     LOGIN: '/api/auth/login',
     REGISTER: '/api/auth/register',
@@ -246,7 +246,7 @@ function showToast(message, type = 'info') {
   if (!container) return;
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
-  
+
   let iconSvg = '';
   if (type === 'success') {
     iconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"></polyline></svg>';
@@ -985,8 +985,8 @@ function syncProfileFormData() {
 
   const toggle = document.getElementById('profileVisibilityToggle');
   toggle.checked = user.visibility === 'public';
-  document.getElementById('visibilityDesc').innerHTML = toggle.checked ? 
-    '<strong>Public:</strong> Discoverable in global search.' : 
+  document.getElementById('visibilityDesc').innerHTML = toggle.checked ?
+    '<strong>Public:</strong> Discoverable in global search.' :
     '<strong style="color: var(--amber);">Private:</strong> Hidden from directory.';
 
   document.getElementById('profileFullName').value = user.name;
@@ -1004,8 +1004,8 @@ function syncProfileFormData() {
 
 function toggleVisibility(checkbox) {
   AppState.currentUser.visibility = checkbox.checked ? 'public' : 'private';
-  document.getElementById('visibilityDesc').innerHTML = checkbox.checked ? 
-    '<strong>Public:</strong> Discoverable in global search.' : 
+  document.getElementById('visibilityDesc').innerHTML = checkbox.checked ?
+    '<strong>Public:</strong> Discoverable in global search.' :
     '<strong style="color: var(--amber);">Private:</strong> Hidden from directory.';
   saveStateToStorage();
   showToast(`Profile visibility: ${AppState.currentUser.visibility}`, 'info');
@@ -1304,7 +1304,7 @@ function handleReportSubmit(e) {
       category: reason,
       description: document.getElementById('reportDetails').value.trim()
     })
-  }).catch(() => {});
+  }).catch(() => { });
 
   const currentMod = JSON.parse(localStorage.getItem('skillswap_moderation')) || [];
   currentMod.unshift({
@@ -1328,6 +1328,57 @@ function handleReportSubmit(e) {
 // 12. INITIALIZATION
 // ==========================================================================
 // Replace the demo members with real users from the SQLite database
+async function loadCurrentUserFromBackend() {
+  try {
+    const response = await fetch(
+      `${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.GET_PROFILE}`,
+      {
+        method: 'GET',
+        credentials: 'include'
+      }
+    );
+
+    if (!response.ok) {
+      console.warn('Could not load the logged-in user profile.');
+      return;
+    }
+
+    const profile = await response.json();
+
+    // Update the frontend with the authenticated user's real profile.
+    AppState.currentUser = {
+      ...AppState.currentUser,
+      ...profile
+    };
+
+    saveStateToStorage();
+    updateNavbarUserSnippet();
+
+    // Add the greeting only once to the current chat.
+    if (AppState.chatMessages.length === 0) {
+      const safeName = String(profile.name || 'there').replace(
+        /[&<>"']/g,
+        character => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        })[character]
+      );
+
+      AppState.chatMessages.push({
+        sender: 'ai',
+        text: `Hi ${safeName}! 👋 Welcome back to SkillSwap. How can I help you today?`
+      });
+
+      renderAiDrawerMessages();
+    }
+  } catch (error) {
+    console.error('Error loading the current user:', error);
+  }
+}
+
 async function loadUsersFromBackend() {
   try {
     const res = await fetch(CONFIG.ENDPOINTS.GET_USERS);
@@ -1341,7 +1392,7 @@ async function loadUsersFromBackend() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const inputOffered = document.getElementById('inputOfferedTag');
   if (inputOffered) {
     inputOffered.addEventListener('keydown', (e) => {
@@ -1368,6 +1419,10 @@ document.addEventListener('DOMContentLoaded', () => {
   AI_DOCK_MEDIA.addEventListener('change', syncAiDock);
 
   updateNavbarUserSnippet();
+
+  // Load the authenticated user before loading the other members.
+  await loadCurrentUserFromBackend();
+
   if (document.getElementById('profilesGrid')) {
     navigateTo(AppState.currentView);
     loadUsersFromBackend();
