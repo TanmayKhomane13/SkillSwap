@@ -26,3 +26,5 @@ static/uploads/
 
 ai_models
 vector_store
+
+chroma_db/

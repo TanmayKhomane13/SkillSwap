@@ -1328,55 +1328,51 @@ function handleReportSubmit(e) {
 // 12. INITIALIZATION
 // ==========================================================================
 // Replace the demo members with real users from the SQLite database
+// Show the AI chat greeting once per page load: "Hi <name>! ..."
+function showChatGreeting(name) {
+  if (AppState.chatMessages.length > 0) return;
+
+  // Escape the name, because chat messages are inserted into the page as HTML
+  const safeName = String(name || 'there').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[ch]);
+
+  AppState.chatMessages.push({
+    sender: 'ai',
+    text: `Hi ${safeName}! Chat with <strong>sAI</strong> for finding swap partners, matching skills and getting profile insights.`  });
+  renderAiDrawerMessages();
+}
+
+// Load the logged-in user from the database, then greet them in the chat
 async function loadCurrentUserFromBackend() {
   try {
-    const response = await fetch(
-      `${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.GET_PROFILE}`,
-      {
-        method: 'GET',
-        credentials: 'include'
-      }
-    );
+    // Relative URL = same address as this page, so the login cookie is always sent
+    const response = await fetch(CONFIG.ENDPOINTS.GET_PROFILE);
 
-    if (!response.ok) {
+    if (response.ok) {
+      const profile = await response.json();
+      const current = AppState.currentUser;
+
+      // Database values win, but keep the fields the database does not store
+      AppState.currentUser = {
+        ...current,
+        ...profile,
+        location: current.location || profile.location,
+        visibility: current.visibility || profile.visibility,
+        swapsCompleted: current.swapsCompleted ?? profile.swapsCompleted
+      };
+
+      saveStateToStorage();
+      updateNavbarUserSnippet();
+    } else {
       console.warn('Could not load the logged-in user profile.');
-      return;
-    }
-
-    const profile = await response.json();
-
-    // Update the frontend with the authenticated user's real profile.
-    AppState.currentUser = {
-      ...AppState.currentUser,
-      ...profile
-    };
-
-    saveStateToStorage();
-    updateNavbarUserSnippet();
-
-    // Add the greeting only once to the current chat.
-    if (AppState.chatMessages.length === 0) {
-      const safeName = String(profile.name || 'there').replace(
-        /[&<>"']/g,
-        character => ({
-          '&': '&amp;',
-          '<': '&lt;',
-          '>': '&gt;',
-          '"': '&quot;',
-          "'": '&#39;'
-        })[character]
-      );
-
-      AppState.chatMessages.push({
-        sender: 'ai',
-        text: `Hi ${safeName}! 👋 Welcome back to SkillSwap. How can I help you today?`
-      });
-
-      renderAiDrawerMessages();
     }
   } catch (error) {
     console.error('Error loading the current user:', error);
   }
+
+  // Greet with the name we have (from the database, or from the saved login)
+  showChatGreeting(AppState.currentUser.name);
 }
 
 async function loadUsersFromBackend() {
