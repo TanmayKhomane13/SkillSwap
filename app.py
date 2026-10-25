@@ -101,6 +101,7 @@ def fetch_one(sql, args=()):
 def execute(sql, args=()):
     """Run INSERT / UPDATE. Returns the new row id (for INSERT)."""
     conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA foreign_keys = ON")  # make SQLite enforce the FOREIGN KEY rules
     try:
         cursor = conn.execute(sql, args)
         conn.commit()
@@ -472,6 +473,135 @@ def update_report_status(report_id):
 
     execute("UPDATE reports SET status = ? WHERE id = ?", (status, report_id))
     return jsonify({"message": "Report updated", "status": status})
+
+# ---------------------------------------------------------------------
+# Swap requests
+# A sends a request to B: A sees it as "outgoing", B sees it as "incoming".
+# Both read the same row in swap_requests.
+# ---------------------------------------------------------------------
+# One request plus the OTHER person's name and picture, as seen by user :me
+SWAP_SELECT = """
+    SELECT r.*, p.id AS partner_id, p.name AS partner_name,
+           p.profile_pic IS NOT NULL AS partner_has_pic
+    FROM swap_requests r
+    JOIN users p ON p.id = CASE WHEN r.requester_id = :me
+                                THEN r.recipient_id ELSE r.requester_id END
+    WHERE (r.requester_id = :me OR r.recipient_id = :me)
+"""
+
+
+def swap_to_json(row, me):
+    """Turn one request into the JSON the frontend expects, from user `me`'s side."""
+    sent_by_me = row["requester_id"] == me
+    swap = {
+        "id": str(row["id"]),
+        "type": "outgoing" if sent_by_me else "incoming",
+        "partnerId": str(row["partner_id"]),
+        "partnerName": row["partner_name"],
+        "partnerAvatar": f"/api/users/{row['partner_id']}/picture" if row["partner_has_pic"] else DEFAULT_AVATAR,
+        "partnerLocation": "",
+        "status": row["status"],
+        "message": row["message"],
+        "created_at": row["created_at"],
+    }
+    if sent_by_me:
+        swap["skillWantedFromPartner"] = row["skill_wanted"]   # what I asked them to teach
+        swap["skillOfferedFromUser"] = row["skill_offered"]    # what I offered to teach
+    else:
+        swap["skillWantedFromUser"] = row["skill_wanted"]      # what they want me to teach
+        swap["skillOfferedToUser"] = row["skill_offered"]      # what they offer to teach me
+    return swap
+
+
+@app.route("/api/swaps", methods=["GET"])
+@login_required
+def list_swaps():
+    """All my requests (incoming and outgoing). Cancelled ones are hidden."""
+    me = session["user_id"]
+    rows = fetch_all(SWAP_SELECT + " AND r.status != 'cancelled' ORDER BY r.id DESC", {"me": me})
+    return jsonify([swap_to_json(r, me) for r in rows])
+
+
+@app.route("/api/swaps/create", methods=["POST"])
+@login_required
+def create_swap():
+    me = session["user_id"]
+    data = get_json()
+    skill_wanted = str(data.get("skillWanted", "")).strip()
+    skill_offered = str(data.get("skillOffered", "")).strip()
+    message = str(data.get("message", "")).strip()[:500]
+
+    try:
+        recipient_id = int(data.get("recipientId"))
+    except (TypeError, ValueError):
+        return error("A valid recipientId is required")
+
+    if recipient_id == me:
+        return error("You cannot send a request to yourself")
+    if not skill_wanted or not skill_offered:
+        return error("Choose the skill you want and the skill you offer")
+
+    recipient = fetch_one("SELECT skills_offered FROM users WHERE id = ?", (recipient_id,))
+    sender = fetch_one("SELECT skills_offered FROM users WHERE id = ?", (me,))
+    if not recipient:
+        return error("User not found", 404)
+    if not sender:
+        return error("Login required", 401)
+    if skill_wanted not in json.loads(recipient["skills_offered"]):
+        return error("That user does not teach this skill")
+    if skill_offered not in json.loads(sender["skills_offered"]):
+        return error("You do not offer this skill")
+
+    try:
+        swap_id = execute(
+            """INSERT INTO swap_requests
+               (requester_id, recipient_id, skill_wanted, skill_offered, message)
+               VALUES (?, ?, ?, ?, ?)""",
+            (me, recipient_id, skill_wanted, skill_offered, message),
+        )
+    except sqlite3.IntegrityError:
+        return error("You already sent this request", 409)
+
+    row = fetch_one(SWAP_SELECT + " AND r.id = :id", {"me": me, "id": swap_id})
+    return jsonify({"message": "Request sent", "swap": swap_to_json(row, me)}), 201
+
+
+@app.route("/api/swaps/<int:swap_id>/status", methods=["PATCH"])
+@login_required
+def update_swap_status(swap_id):
+    me = session["user_id"]
+    new_status = get_json().get("status")
+    swap = fetch_one("SELECT * FROM swap_requests WHERE id = ?", (swap_id,))
+
+    # Only the two people in the request can see or change it
+    if not swap or me not in (swap["requester_id"], swap["recipient_id"]):
+        return error("Request not found", 404)
+
+    is_sender = swap["requester_id"] == me
+
+    # new status: (who may set it, status the request must be in right now)
+    rules = {
+        "accepted":  (not is_sender, "pending"),    # only B can accept
+        "declined":  (not is_sender, "pending"),    # only B can decline
+        "cancelled": (is_sender, "pending"),        # only A can withdraw
+        "completed": (True, "accepted"),            # either one, after it was accepted
+    }
+    if new_status not in rules:
+        return error("Status must be one of: " + ", ".join(rules))
+
+    allowed, needed = rules[new_status]
+    if not allowed:
+        return error("You are not allowed to do that", 403)
+    if swap["status"] != needed:
+        return error(f"Only a {needed} request can be set to {new_status}", 409)
+
+    execute(
+        "UPDATE swap_requests SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (new_status, swap_id),
+    )
+    row = fetch_one(SWAP_SELECT + " AND r.id = :id", {"me": me, "id": swap_id})
+    return jsonify({"message": "Request updated", "swap": swap_to_json(row, me)})
+
 
 # ========================== sAI =========================================
 @app.route("/api/ai/chat", methods=["POST"])

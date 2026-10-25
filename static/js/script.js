@@ -214,7 +214,7 @@ const SEED_SWAPS = [
 const AppState = {
   currentUser: JSON.parse(localStorage.getItem('skillswap_user')) || DEFAULT_CURRENT_USER,
   users: JSON.parse(localStorage.getItem('skillswap_all_users')) || SEED_USERS,
-  swaps: JSON.parse(localStorage.getItem('skillswap_swaps')) || SEED_SWAPS,
+  swaps: [], // loaded from the database: see loadSwapsFromBackend()
   broadcast: JSON.parse(localStorage.getItem('skillswap_broadcast')) || {
     active: true,
     type: 'announcement',
@@ -318,7 +318,10 @@ function navigateTo(viewId) {
 
   if (viewId === 'explore' && document.getElementById('profilesGrid')) renderExploreProfiles();
   if (viewId === 'matches' && document.getElementById('matchesGrid')) renderMatchesView();
-  if (viewId === 'swaps' && document.getElementById('swapsListContainer')) renderSwapsList();
+  if (viewId === 'swaps' && document.getElementById('swapsListContainer')) {
+    renderSwapsList();
+    loadSwapsFromBackend(); // pick up requests other people sent
+  }
   if (viewId === 'profile' && document.getElementById('sidebarAvatarPreview')) syncProfileFormData();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1056,13 +1059,13 @@ function renderSwapsList() {
       return `
         <div class="swap-item-card" id="swap-${swap.id}">
           <div style="display: flex; align-items: center; gap: 14px; flex: 1;">
-            <img src="${swap.partnerAvatar}" alt="${swap.partnerName}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid white;">
+            <img src="${swap.partnerAvatar}" alt="${escapeHtml(swap.partnerName)}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid white;">
             <div>
-              <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-main);">${swap.partnerName} <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-muted);">${swap.date}</span></h4>
+              <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-main);">${escapeHtml(swap.partnerName)} <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-muted);">${swap.date}</span></h4>
               <div style="font-size: 0.85rem; margin-top: 2px;">
-                They teach: <strong style="color: var(--emerald-dark);">${swap.skillOfferedToUser}</strong> ⇄ You teach: <strong style="color: var(--primary);">${swap.skillWantedFromUser}</strong>
+                They teach: <strong style="color: var(--emerald-dark);">${escapeHtml(swap.skillOfferedToUser)}</strong> ⇄ You teach: <strong style="color: var(--primary);">${escapeHtml(swap.skillWantedFromUser)}</strong>
               </div>
-              <div style="font-size: 0.82rem; color: var(--text-muted); font-style: italic; margin-top: 4px;">"${swap.message}"</div>
+              <div style="font-size: 0.82rem; color: var(--text-muted); font-style: italic; margin-top: 4px;">"${escapeHtml(swap.message)}"</div>
             </div>
           </div>
           <div style="display: flex; gap: 8px;">
@@ -1077,16 +1080,18 @@ function renderSwapsList() {
       return `
         <div class="swap-item-card" id="swap-${swap.id}">
           <div style="display: flex; align-items: center; gap: 14px; flex: 1;">
-            <img src="${swap.partnerAvatar}" alt="${swap.partnerName}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid white;">
+            <img src="${swap.partnerAvatar}" alt="${escapeHtml(swap.partnerName)}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid white;">
             <div>
-              <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-main);">To: ${swap.partnerName} <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-muted);">${swap.date}</span></h4>
+              <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-main);">To: ${escapeHtml(swap.partnerName)} <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-muted);">${swap.date}</span></h4>
               <div style="font-size: 0.85rem; margin-top: 2px;">
-                Requested: <strong>${swap.skillWantedFromPartner}</strong> ⇄ Offered: <strong>${swap.skillOfferedFromUser}</strong>
+                Requested: <strong>${escapeHtml(swap.skillWantedFromPartner)}</strong> ⇄ Offered: <strong>${escapeHtml(swap.skillOfferedFromUser)}</strong>
               </div>
             </div>
           </div>
           <div>
-            <button type="button" class="btn btn-danger btn-sm" onclick="handleCancelOutgoingSwap('${swap.id}')">Cancel Request</button>
+            ${swap.status === 'pending'
+              ? `<button type="button" class="btn btn-danger btn-sm" onclick="handleCancelOutgoingSwap('${swap.id}')">Cancel Request</button>`
+              : `<span class="badge badge-neutral">${swap.status.toUpperCase()}</span>`}
           </div>
         </div>
       `;
@@ -1095,15 +1100,15 @@ function renderSwapsList() {
       return `
         <div class="swap-item-card" id="swap-${swap.id}">
           <div style="display: flex; align-items: center; gap: 14px; flex: 1;">
-            <img src="${swap.partnerAvatar}" alt="${swap.partnerName}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid white;">
+            <img src="${swap.partnerAvatar}" alt="${escapeHtml(swap.partnerName)}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid white;">
             <div>
-              <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-main);">${swap.partnerName}</h4>
+              <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-main);">${escapeHtml(swap.partnerName)}</h4>
               <div style="font-size: 0.85rem;">Status: <span class="badge badge-${isCompleted ? 'mint' : 'plum'}">${isCompleted ? 'Completed' : 'Active'}</span></div>
             </div>
           </div>
           <div style="display: flex; gap: 8px;">
             ${!isCompleted ? `<button type="button" class="btn btn-emerald btn-sm" onclick="handleMarkCompleted('${swap.id}')">Mark Complete</button>` : ''}
-            <button type="button" class="btn btn-glass btn-sm" onclick="openRatingModal('${swap.id}', '${swap.partnerName}')">
+            <button type="button" class="btn btn-glass btn-sm" onclick="openRatingModal('${swap.id}')">
               <span>${swap.hasReviewed ? 'Reviewed ★' : 'Leave Rating'}</span>
             </button>
           </div>
@@ -1113,40 +1118,87 @@ function renderSwapsList() {
   }).join('');
 }
 
-function handleAcceptSwap(swapId) {
-  const swap = AppState.swaps.find(s => s.id === swapId);
-  if (!swap) return;
-  swap.status = 'accepted';
-  saveStateToStorage();
-  updateNavbarUserSnippet();
-  renderSwapsList();
-  showToast(`Accepted swap with ${swap.partnerName}! Added to Active Exchanges.`, 'success');
+// --------------------------------------------------------------------------
+// Swap requests live in the database: A sends -> A sees "outgoing", B sees "incoming"
+// --------------------------------------------------------------------------
+// SQLite gives UTC time like "2026-10-25 10:30:00"; show it as "3 hours ago"
+function timeAgo(dateText) {
+  const then = new Date(String(dateText).replace(' ', 'T') + 'Z');
+  const minutes = Math.floor((Date.now() - then.getTime()) / 60000);
+  if (isNaN(minutes) || minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
 }
 
-function handleRejectSwap(swapId) {
-  const swap = AppState.swaps.find(s => s.id === swapId);
-  if (!swap) return;
-  swap.status = 'cancelled';
-  saveStateToStorage();
-  updateNavbarUserSnippet();
-  renderSwapsList();
-  showToast(`Declined swap proposal`, 'info');
+async function loadSwapsFromBackend() {
+  try {
+    const res = await fetch(CONFIG.ENDPOINTS.GET_SWAPS);
+    if (!res.ok) return;
+    const swaps = await res.json();
+
+    // "Reviewed" is not saved in the database yet, so remember it here
+    const reviewed = new Set(AppState.swaps.filter(s => s.hasReviewed).map(s => s.id));
+    AppState.swaps = swaps.map(s => ({ ...s, date: timeAgo(s.created_at), hasReviewed: reviewed.has(s.id) }));
+
+    saveStateToStorage();
+    updateNavbarUserSnippet();
+    if (document.getElementById('swapsListContainer')) renderSwapsList();
+  } catch (err) {
+    // Backend not reachable: keep what is on screen
+  }
 }
 
-function handleCancelOutgoingSwap(swapId) {
-  AppState.swaps = AppState.swaps.filter(s => s.id !== swapId);
-  saveStateToStorage();
-  renderSwapsList();
-  showToast('Cancelled outgoing request', 'info');
+// Set a request to accepted / declined / cancelled / completed. Returns true if it worked.
+async function changeSwapStatus(swapId, status) {
+  try {
+    const res = await fetch(CONFIG.ENDPOINTS.UPDATE_SWAP_STATUS(swapId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(escapeHtml(data.error || 'Could not update the request'), 'error');
+      await loadSwapsFromBackend(); // the other person may have changed it already
+      return false;
+    }
+  } catch (err) {
+    showToast('Server error updating the request', 'error');
+    return false;
+  }
+  await loadSwapsFromBackend();
+  return true;
 }
 
-function handleMarkCompleted(swapId) {
+async function handleAcceptSwap(swapId) {
   const swap = AppState.swaps.find(s => s.id === swapId);
   if (!swap) return;
-  swap.status = 'completed';
-  saveStateToStorage();
-  renderSwapsList();
-  showToast(`Swap completed with ${swap.partnerName}!`, 'success');
+  if (await changeSwapStatus(swapId, 'accepted')) {
+    showToast(`Accepted swap with ${escapeHtml(swap.partnerName)}! Added to Active Exchanges.`, 'success');
+  }
+}
+
+async function handleRejectSwap(swapId) {
+  if (await changeSwapStatus(swapId, 'declined')) {
+    showToast('Declined swap proposal', 'info');
+  }
+}
+
+async function handleCancelOutgoingSwap(swapId) {
+  if (await changeSwapStatus(swapId, 'cancelled')) {
+    showToast('Cancelled outgoing request', 'info');
+  }
+}
+
+async function handleMarkCompleted(swapId) {
+  const swap = AppState.swaps.find(s => s.id === swapId);
+  if (!swap) return;
+  if (await changeSwapStatus(swapId, 'completed')) {
+    showToast(`Swap completed with ${escapeHtml(swap.partnerName)}!`, 'success');
+  }
 }
 
 // ==========================================================================
@@ -1361,7 +1413,7 @@ function openSwapRequestModal(partnerId) {
   openModal('modalSwapRequest');
 }
 
-function handleSendSwapSubmit(e) {
+async function handleSendSwapSubmit(e) {
   e.preventDefault();
   const targetId = document.getElementById('swapTargetUserId').value;
   const skillWanted = document.getElementById('swapSkillIWant').value;
@@ -1371,28 +1423,31 @@ function handleSendSwapSubmit(e) {
   const partner = AppState.users.find(u => u.id === targetId);
   if (!partner) return;
 
-  const newSwap = {
-    id: 'swp_' + Date.now(),
-    type: 'outgoing',
-    partnerId: partner.id,
-    partnerName: partner.name,
-    partnerAvatar: partner.avatar,
-    partnerLocation: partner.location,
-    skillWantedFromPartner: skillWanted,
-    skillOfferedFromUser: skillOffered,
-    status: 'pending',
-    message: message,
-    date: 'Just now'
-  };
+  try {
+    const res = await fetch(CONFIG.ENDPOINTS.CREATE_SWAP, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipientId: targetId, skillWanted, skillOffered, message })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(escapeHtml(data.error || 'Could not send the request'), 'error');
+      return;
+    }
+  } catch (err) {
+    showToast('Server error sending the request', 'error');
+    return;
+  }
 
-  AppState.swaps.unshift(newSwap);
-  saveStateToStorage();
   closeModal('modalSwapRequest');
-  showToast(`Swap proposition sent to ${partner.name}!`, 'success');
+  showToast(`Swap proposition sent to ${escapeHtml(partner.name)}!`, 'success');
+  loadSwapsFromBackend();
 }
 
 // Rating Modal
-function openRatingModal(swapId, partnerName) {
+function openRatingModal(swapId) {
+  const swap = AppState.swaps.find(s => s.id === swapId);
+  const partnerName = swap ? swap.partnerName : '';
   document.getElementById('ratingSwapId').value = swapId;
   document.getElementById('modalRatingTitle').textContent = `Rate Exchange with ${partnerName}`;
   setStarRating(5);
@@ -1607,5 +1662,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (document.getElementById('profilesGrid')) {
     navigateTo(AppState.currentView);
     loadUsersFromBackend();
+    loadSwapsFromBackend();
+    setInterval(loadSwapsFromBackend, 30000); // new incoming requests show up without a refresh
   }
 });

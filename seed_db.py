@@ -5,6 +5,7 @@ Tables:
     users   - login (hashed password), profiles, bio, skills, experience, availability, profile picture (BLOB), rating
     admin   - administrator accounts
     reports - user reports
+    swap_requests - swap requests between users (A sends to B)
 
 Run once (delete skillswap.db first if you have an old one):
     python seed_db.py
@@ -72,6 +73,15 @@ DEMO_USERS = [
 ]
 
 
+# Sample swap requests: (from email, to email, skill wanted from them, skill offered back, message)
+DEMO_REQUESTS = [
+    ("priya@example.com", "alex@example.com", "Graphic Design", "Python",
+     "Hi Alex! I can teach you Python if you teach me graphic design basics."),
+    ("alex@example.com", "maya@example.com", "JavaScript", "Graphic Design",
+     "Hi Maya! I would love to learn JavaScript. I can teach you graphic design in return."),
+]
+
+
 def seed_database():
     conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA foreign_keys = ON")
@@ -118,6 +128,33 @@ def seed_database():
         )
     """)
 
+    # A request from A (requester) to B (recipient):
+    #   A sees it as "outgoing", B sees it as "incoming" - both read this one row.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS swap_requests (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            requester_id  INTEGER NOT NULL,                  -- A: sends the request
+            recipient_id  INTEGER NOT NULL,                  -- B: receives the request
+            skill_wanted  TEXT NOT NULL,                     -- skill A wants to learn from B
+            skill_offered TEXT NOT NULL,                     -- skill A teaches B in return
+            message       TEXT NOT NULL DEFAULT '',
+            status        TEXT NOT NULL DEFAULT 'pending'
+                          CHECK (status IN ('pending', 'accepted', 'declined', 'cancelled', 'completed')),
+            created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (requester_id) REFERENCES users(id),
+            FOREIGN KEY (recipient_id) REFERENCES users(id),
+            CHECK (requester_id != recipient_id)             -- no requests to yourself
+        )
+    """)
+
+    # A cannot send the same pending request to B twice
+    conn.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS one_pending_request
+        ON swap_requests (requester_id, recipient_id, skill_wanted, skill_offered)
+        WHERE status = 'pending'
+    """)
+
     # ---- Demo data (safe to run again: duplicates are ignored) --------
     for u in DEMO_USERS:
         conn.execute(
@@ -146,10 +183,22 @@ def seed_database():
                WHERE r.email = 'sam@example.com' AND p.email = 'priya@example.com'"""
         )
 
+    # Sample swap requests (only added if the table is empty)
+    if conn.execute("SELECT COUNT(*) FROM swap_requests").fetchone()[0] == 0:
+        for sender, receiver, wanted, offered, message in DEMO_REQUESTS:
+            conn.execute(
+                """INSERT INTO swap_requests
+                   (requester_id, recipient_id, skill_wanted, skill_offered, message)
+                   SELECT s.id, r.id, ?, ?, ?
+                   FROM users s, users r
+                   WHERE s.email = ? AND r.email = ?""",
+                (wanted, offered, message, sender, receiver),
+            )
+
     conn.commit()
 
     print(f"Database ready: {DB_PATH}")
-    for table in ("users", "admin", "reports"):
+    for table in ("users", "admin", "reports", "swap_requests"):
         count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
         print(f"  {table}: {count} rows")
 
